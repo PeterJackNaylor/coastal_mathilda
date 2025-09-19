@@ -1,6 +1,6 @@
 import os
 import sys 
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'INR4Torch')))
+# sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'INR4Torch')))
 import argparse
 import pinns
 import pandas as pd
@@ -188,28 +188,6 @@ def setup_hp(
     # model_hp.pth_name = f"{name}.pth"
     # model_hp.npz_name = f"{name}.npz"
     return model_hp
-
-
-def single_run(
-    yaml_params,
-    data,
-    idx,
-    name,
-    model,
-    scale,
-    encoding,
-):
-    model_hp = setup_hp(
-        yaml_params,
-        data,
-        name,
-    )
-
-    return_dataset_fn = partial(return_dataset, data=data, index=idx, encoding=encoding)
-    NN, model_hp = pinns.train(
-        model_hp, Surface, return_dataset_fn, INR, gpu=model_hp.gpu
-    )
-    return NN, model_hp
 
 
 def mae(target, prediction):
