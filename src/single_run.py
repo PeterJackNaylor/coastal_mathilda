@@ -1,4 +1,6 @@
 import os
+import sys 
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'INR4Torch')))
 import argparse
 import pinns
 import pandas as pd
@@ -433,58 +435,64 @@ def load_data(filename):
         import pdb; pdb.set_trace()
     return data
 
-def load_data_faster(opt = "default"):
+def load_data_faster(opt = "default", path="/home/mletard/compute/4dinr/data"):
     if opt == 'default':
         filename = "data/data_simu.npy"
         return np.load(filename), None
     elif opt == "seasonal_beach_temporal":
-        filename = "data/seasonal_beach_temporal.npy"
-        filename_index = "data/seasonal_beach_temporal_split.npy"
+        filename = path+"/seasonal_beach_temporal.npy"
+        filename_index = path+"/seasonal_beach_temporal_split.npy"
     elif opt == "seasonal_beach_spatial":
-        filename = "data/seasonal_beach_spatial.npy"
-        filename_index = "data/seasonal_beach_spatial_split.npy"
+        filename = path+"/seasonal_beach_spatial.npy"
+        filename_index = path+"/seasonal_beach_spatial_split.npy"
     elif opt == "seasonal_beach_temporal_encoding":
-        filename = "data/seasonal_beach_temporal_encoding.npy"
-        filename_index = "data/seasonal_beach_temporal_encoding_split.npy"
+        filename = path+"/seasonal_beach_temporal_encoding.npy"
+        filename_index = path+"/seasonal_beach_temporal_encoding_split.npy"
     elif opt == "seasonal_beach_spatial_encoding":
-        filename = "data/seasonal_beach_spatial_encoding.npy"
-        filename_index = "data/seasonal_beach_spatial_encoding_split.npy"
+        filename = path+"/seasonal_beach_spatial_encoding.npy"
+        filename_index = path+"/seasonal_beach_spatial_encoding_split.npy"
     elif opt == "monthly_beach_temporal":
-        filename = "data/monthly_beach_temporal.npy"
-        filename_index = "data/monthly_beach_temporal_split.npy"
+        filename = path+"/monthly_beach_temporal.npy"
+        filename_index = path+"/monthly_beach_temporal_split.npy"
     elif opt == "monthly_beach_spatial":
-        filename = "data/monthly_beach_spatial.npy"
-        filename_index = "data/monthly_beach_spatial_split.npy"
+        filename = path+"/monthly_beach_spatial.npy"
+        filename_index = path+"/monthly_beach_spatial_split.npy"
     elif opt == "monthly_beach_temporal_encoding":
-        filename = "data/monthly_beach_temporal_encoding.npy"
-        filename_index = "data/monthly_beach_temporal_encoding_split.npy"
+        filename = path+"/monthly_beach_temporal_encoding.npy"
+        filename_index = path+"/monthly_beach_temporal_encoding_split.npy"
     elif opt == "monthly_beach_spatial_encoding":
-        filename = "data/monthly_beach_spatial_encoding.npy"
-        filename_index = "data/monthly_beach_spatial_encoding_split.npy"
+        filename = path+"/monthly_beach_spatial_encoding.npy"
+        filename_index = path+"/monthly_beach_spatial_encoding_split.npy"
     elif opt == "weekly_beach_temporal":
-        filename = "data/weekly_beach_temporal.npy"
-        filename_index = "data/weekly_beach_temporal_split.npy"
+        filename = path+"/weekly_beach_temporal.npy"
+        filename_index = path+"/weekly_beach_temporal_split.npy"
     elif opt == "weekly_beach_spatial":
-        filename = "data/weekly_beach_spatial.npy"
-        filename_index = "data/weekly_beach_spatial_split.npy"
+        filename = path+"/weekly_beach_spatial.npy"
+        filename_index = path+"/weekly_beach_spatial_split.npy"
     elif opt == "weekly_beach_temporal_encoding":
-        filename = "data/weekly_beach_temporal_encoding.npy"
-        filename_index = "data/weekly_beach_temporal_encoding_split.npy"
+        filename = path+"/weekly_beach_temporal_encoding.npy"
+        filename_index = path+"/weekly_beach_temporal_encoding_split.npy"
     elif opt == "weekly_beach_spatial_encoding":
-        filename = "data/weekly_beach_spatial_encoding.npy"
-        filename_index = "data/weekly_beach_spatial_encoding_split.npy"
+        filename = path+"/weekly_beach_spatial_encoding.npy"
+        filename_index = path+"/weekly_beach_spatial_encoding_split.npy"
     elif opt == "daily_beach_temporal":
-        filename = "data/daily_beach_temporal.npy"
-        filename_index = "data/daily_beach_temporal_split.npy"
+        filename = path+"/daily_beach_temporal.npy"
+        filename_index = path+"/daily_beach_temporal_split.npy"
     elif opt == "daily_beach_spatial":
-        filename = "data/daily_beach_spatial.npy"
-        filename_index = "data/daily_beach_spatial_split.npy"
+        filename = path+"/daily_beach_spatial.npy"
+        filename_index = path+"/daily_beach_spatial_split.npy"
     elif opt == "daily_beach_temporal_encoding":
-        filename = "data/daily_beach_temporal_encoding.npy"
-        filename_index = "data/daily_beach_temporal_encoding_split.npy"
+        filename = path+"/daily_beach_temporal_encoding.npy"
+        filename_index = path+"/daily_beach_temporal_encoding_split.npy"
     elif opt == "daily_beach_spatial_encoding":
-        filename = "data/daily_beach_spatial_encoding.npy"
-        filename_index = "data/daily_beach_spatial_encoding_split.npy"
+        filename = path+"/daily_beach_spatial_encoding.npy"
+        filename_index = path+"/daily_beach_spatial_encoding_split.npy"
+    elif opt == "final_map":
+        filename = path+"map.npy"
+        filename_index = path+"map_split.npy"
+    elif opt == "time_series":
+        filename = path+"timeseries.npy"
+        filename_index = path+"timeseries_split.npy"
 
     return np.load(filename), np.load(filename_index)
 
@@ -616,8 +624,6 @@ def single_run(
     data,
     idx,
     name,
-    model,
-    scale,
     encoding,
 ):
     model_hp = setup_hp(
@@ -627,6 +633,8 @@ def single_run(
     )
 
     return_dataset_fn = partial(return_dataset, data=data, index=idx, encoding=encoding)
+    model_hp.pth_name = f"{name}/{name}.pth"
+    model_hp.npz_name = f"{name}/{name}.npz"
     NN, model_hp = pinns.train(
         model_hp, Surface, return_dataset_fn, INR, gpu=model_hp.gpu
     )
@@ -700,7 +708,6 @@ def main():
         sampler=optuna.samplers.TPESampler(),
         pruner=optuna.pruners.HyperbandPruner(),
     )
-
     study.optimize(objective, n_trials=model_hp.optuna["trials"])
     scores_id = get_n_best_trials(study)
     id_trial = scores_id[-1][0]
