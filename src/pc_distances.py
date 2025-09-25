@@ -11,6 +11,9 @@ def gt_elevation_ts(data_path, save_path, corepoints_path, name, make_analysis =
     if make_analysis:
         core_pc = py4dgeo.read_from_las(corepoints_path)
         corepoints = core_pc.cloud
+        corept_dummy = np.zeros(corepoints.shape)
+        corept_dummy[:,:-1] = corepoints[:,:2]
+
         pc_list = []
         files = os.listdir(data_path)
         for ff in files:
@@ -23,74 +26,66 @@ def gt_elevation_ts(data_path, save_path, corepoints_path, name, make_analysis =
             timestamp = datetime.strptime(timestamp_str, '%y%m%d_%H%M%S')
             timestamps.append(timestamp)
         asort = np.argsort(timestamps)
-        ref_id = asort[0]
         analysis = py4dgeo.SpatiotemporalAnalysis(f'{save_path}/{name}.zip', force=True)
-        reference_epoch_file = pc_list[ref_id]
-        reference_epoch = py4dgeo.read_from_las(reference_epoch_file)
-        reference_epoch.timestamp = timestamps[ref_id]
+        epoch_dummy = py4dgeo.Epoch(cloud=corept_dummy, normals=None, timestamp=datetime.strptime('190901_000000', '%y%m%d_%H%M%S'))
+        reference_epoch = epoch_dummy
+        reference_epoch.timestamp = datetime.strptime('190901_000000', '%y%m%d_%H%M%S')
         analysis.reference_epoch = reference_epoch
         analysis.corepoints = corepoints
-
-        # specify M3C2 parameters
-        analysis.m3c2 = py4dgeo.M3C2(cyl_radius=0.25, corepoint_normals=np.tile([0, 0, 1], (corepoints.shape[0], 1)), max_distance=10.0, registration_error = 0.025)
-        # create a list to collect epoch objects
+        analysis.m3c2 = py4dgeo.M3C2(cyl_radius=0.25, corepoint_normals=np.tile([0, 0, 1], (corepoints.shape[0], 1)), max_distance=60.0, registration_error = 0.025)
         epochs = []
-        for k in range(1,asort.shape[0],1):
+        for k in range(0,asort.shape[0],1):
             pc_id = asort[k]
             epoch = py4dgeo.read_from_las(pc_list[pc_id])
             epoch.timestamp = timestamps[pc_id]
             epochs.append(epoch)
         analysis.add_epochs(*epochs)
-
-        corept_dummy = corepoints
-        print(corepoints.shape)
-        print(stop)
-
-        print(f"Space-time distance array:\n{analysis.distances[:3,:5]}")
-        print(f"Uncertainties of M3C2 distance calculation:\n{analysis.uncertainties['lodetection'][:3, :5]}")
-        print(f"Timestamp deltas of analysis:\n{analysis.timedeltas[:5]}")
         print(np.all(np.isnan(analysis.distances)))
 
-    fig=plt.figure(figsize=(12,5))
-    ax1=fig.add_subplot(1,2,1,projection='3d',computed_zorder=False)
-    ax2=fig.add_subplot(1,2,2)
-    # get the corepoints
+    plt.rcParams.update({
+        'font.size': 22,          # base font size
+        'axes.titlesize': 20,     # title font size
+        'axes.labelsize': 18,     # x/y labels
+        'lines.linewidth': 3,     # line width
+        'lines.markersize': 2,   # default marker size
+        'xtick.labelsize': 14,
+        'ytick.labelsize': 14,
+        'legend.fontsize': 16
+    })
+    fig = plt.figure(figsize=(20,7))
+    gs = fig.add_gridspec(1, 2, width_ratios=[2, 1])
+    ax1 = fig.add_subplot(gs[0])#, projection='3d', computed_zorder=False)
+    ax2 = fig.add_subplot(gs[1])
     corepoints = analysis.corepoints.cloud
-    # get change values of last epoch for all corepoints
     distances = analysis.distances
-    distances_epoch = [d[2] for d in distances]
-    # get the time series of changes at a specific core point locations
+    distances_epoch = [d[1] for d in distances]
     cp_idx_sel = 54660
     coord_sel = analysis.corepoints.cloud[cp_idx_sel]
     timeseries_sel = distances[cp_idx_sel]
     print(np.where(np.any(np.isnan(distances), axis=1) == False)[0])
     print(timeseries_sel)
-    # get the list of timestamps from the reference epoch timestamp and timedeltas
     timestamps = [t + analysis.reference_epoch.timestamp for t in analysis.timedeltas]
-    # plot the scene
-    d = ax1.scatter(corepoints[:,0], corepoints[:,1], corepoints[:,2], c=distances_epoch[:], cmap='seismic_r', vmin=-1.5, vmax=1.5, s=1, zorder=1) 
-    plt.colorbar(d, format=('%.2f'), label='Distance [m]', ax=ax1, shrink=.5, pad=.15)
-    # add the location of the selected coordinate
-    ax1.scatter(coord_sel[0], coord_sel[1], coord_sel[2], c='black', s=3, zorder=2, label='Selected location')
+    # d = ax1.scatter(corepoints[:,0], corepoints[:,1], corepoints[:,2], c=distances_epoch[:], cmap='viridis', s=1, zorder=1)
+    d = ax1.scatter(corepoints[:,1], corepoints[:,0], c=distances_epoch[:], cmap='viridis', s=1, zorder=1)
+    plt.colorbar(d, format=('%.2f'), label='Elevation [m]', ax=ax1, shrink=.5, pad=.15, orientation='horizontal')
+    # ax1.scatter(coord_sel[0], coord_sel[1], coord_sel[2], c='white', s=50, zorder=2, label='Selected location', marker='*',facecolors='white', edgecolors='black', linewidths=0.5)
+    ax1.scatter(coord_sel[1], coord_sel[0], c='white', s=300, zorder=2, label='Selected location', marker='*',facecolors='white', edgecolors='black', linewidths=1)
     ax1.legend()
-    ax1.set_xlabel('X [m]')
-    ax1.set_ylabel('Y [m]')
-    ax1.set_zlabel('Z [m]')
+    ax1.tick_params(labelbottom=False, labelleft=False)
+    ax1.set_xlabel('Y [m]')
+    ax1.set_ylabel('X [m]')
+    # ax1.set_zlabel('Z [m]')
     ax1.set_aspect('equal')
-    ax1.view_init(elev=30., azim=150.)
-    ax1.set_title('Changes at %s' % (analysis.reference_epoch.timestamp+analysis.timedeltas[2]))
-    # plot the time series
-    ax2.plot(timestamps, timeseries_sel, color='blue')
+    # ax1.view_init(elev=30., azim=165.)
+    ax1.set_title('Elevation at %s' % (analysis.reference_epoch.timestamp+analysis.timedeltas[1]))
+    ax2.plot(timestamps, timeseries_sel, color='gray', linestyle='-', zorder=1)
+    ax2.scatter(timestamps, timeseries_sel, c=timeseries_sel, s=150, cmap='viridis', zorder=2)
     ax2.set_xlabel('Date')
-    ax2.set_ylabel('Distance [m]')
-    ax2.grid()
-    ax2.set_ylim(-0.2,1.0)
+    ax2.set_ylabel('Elevation [m]')
     ax2.set_title('Time series at selected location')
     plt.tight_layout()
-    plt.show()
-    plt.savefig('test.png')
-
-
+    plt.savefig(f'{save_path}/time_series_plot_{name}.png')
+    # plt.show()
 
 
 def pair_m3c2(data_path, corepoints_path):
