@@ -42,6 +42,10 @@ def gt_elevation_ts(data_path, save_path, corepoints_path, name, make_analysis =
             epochs.append(epoch)
         analysis.add_epochs(*epochs)
 
+        corept_dummy = corepoints
+        print(corepoints.shape)
+        print(stop)
+
         print(f"Space-time distance array:\n{analysis.distances[:3,:5]}")
         print(f"Uncertainties of M3C2 distance calculation:\n{analysis.uncertainties['lodetection'][:3, :5]}")
         print(f"Timestamp deltas of analysis:\n{analysis.timedeltas[:5]}")
@@ -129,7 +133,7 @@ def main():
     core_path = '/Users/mletard/Desktop/monthly_merged_10cm.las'
     save_path = '/Users/mletard/Desktop'
     # pair_m3c2(data_path, core_path)
-    gt_elevation_ts(data_path, save_path, core_path, "monthly_beach")
+    gt_elevation_ts(data_path, save_path, core_path, "monthly_beach", True)
 
 
 if __name__ == "__main__":
