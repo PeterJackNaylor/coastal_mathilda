@@ -59,10 +59,12 @@ def gt_elevation_ts(data_path, save_path, corepoints_path, name, make_analysis =
     corepoints = analysis.corepoints.cloud
     distances = analysis.distances
     distances_epoch = [d[1] for d in distances]
-    cp_idx_sel = 54660
+    valid_id = np.where(np.any(np.isnan(distances), axis=1) == False)[0]
+    cp_idx_sel = np.random.choice(valid_id, 1)[0]
+    print(cp_idx_sel)
     coord_sel = analysis.corepoints.cloud[cp_idx_sel]
     timeseries_sel = distances[cp_idx_sel]
-    print(np.where(np.any(np.isnan(distances), axis=1) == False)[0])
+    # print(np.where(np.any(np.isnan(distances), axis=1) == False)[0])
     print(timeseries_sel)
     timestamps = [t + analysis.reference_epoch.timestamp for t in analysis.timedeltas]
     # d = ax1.scatter(corepoints[:,0], corepoints[:,1], corepoints[:,2], c=distances_epoch[:], cmap='viridis', s=1, zorder=1)
@@ -83,12 +85,13 @@ def gt_elevation_ts(data_path, save_path, corepoints_path, name, make_analysis =
     ax2.set_xlabel('Date')
     ax2.set_ylabel('Elevation [m]')
     ax2.set_title('Time series at selected location')
+    ax2.tick_params(axis='x', rotation=45)
     plt.tight_layout()
-    plt.savefig(f'{save_path}/time_series_plot_{name}.png')
+    plt.savefig(f'{save_path}/time_series_plot_{name}_{str(cp_idx_sel)}.png')
     # plt.show()
 
 
-def pair_m3c2(data_path, corepoints_path):
+def pair_m3c2(data_path, corepoints_path, save_path, name):
     core_pc = py4dgeo.read_from_las(corepoints_path)
     corepoints = core_pc.cloud
     pc_list = []
@@ -111,24 +114,24 @@ def pair_m3c2(data_path, corepoints_path):
         reference_epoch = py4dgeo.read_from_las(pc_list[ref_id])
         target_epoch = py4dgeo.read_from_las(pc_list[targ_id])
     
-        ori_m3c2_run = py4dgeo.m3c2.M3C2(
+        m3c2_run = py4dgeo.m3c2.M3C2(
             epochs=(reference_epoch, target_epoch),
             corepoints=corepoints,
             cyl_radius=0.25,
             max_distance=10,
             corepoint_normals=np.tile([0, 0, 1], (corepoints.shape[0], 1))
         )
-        ori_distances, _ = ori_m3c2_run.run()
-        print(ori_distances.shape)
-        distances = np.append(distances, ori_distances.reshape((-1,1)), axis=1)
-        print(distances.shape)
+        bitemp_distances, _ = m3c2_run.run()
+        distances = np.append(distances, bitemp_distances.reshape((-1,1)), axis=1)
+    tosave = np.concatenate((corepoints, distances), axis=1)
+    np.save(f'{save_path}/bitemporal_change_{name}.npy', tosave)
 
 def main():
-    data_path = '/Users/mletard/Desktop/monthly_beach'
-    core_path = '/Users/mletard/Desktop/monthly_merged_10cm.las'
+    data_path = '/Users/mletard/Desktop/seasonal_beach'
+    core_path = '/Users/mletard/Desktop/seasonal_merged_10cm.las'
     save_path = '/Users/mletard/Desktop'
-    # pair_m3c2(data_path, core_path)
-    gt_elevation_ts(data_path, save_path, core_path, "monthly_beach", True)
+    pair_m3c2(data_path, core_path, save_path, "seasonal_beach")
+    # gt_elevation_ts(data_path, save_path, core_path, "seasonal_beach", True)
 
 
 if __name__ == "__main__":
