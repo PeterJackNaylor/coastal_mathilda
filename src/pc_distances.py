@@ -32,7 +32,7 @@ def gt_elevation_ts(data_path, save_path, corepoints_path, name, make_analysis =
         reference_epoch.timestamp = datetime.strptime('190901_000000', '%y%m%d_%H%M%S')
         analysis.reference_epoch = reference_epoch
         analysis.corepoints = corepoints
-        analysis.m3c2 = py4dgeo.M3C2(cyl_radius=0.25, corepoint_normals=np.tile([0, 0, 1], (corepoints.shape[0], 1)), max_distance=60.0, registration_error = 0.025)
+        analysis.m3c2 = py4dgeo.M3C2(cyl_radius=0.25, corepoint_normals=np.tile([0, 0, 1], (corepoints.shape[0], 1)), max_distance=60.0, registration_error = 0.0)
         epochs = []
         for k in range(0,asort.shape[0],1):
             pc_id = asort[k]
@@ -119,7 +119,8 @@ def pair_m3c2(data_path, corepoints_path, save_path, name):
             corepoints=corepoints,
             cyl_radius=0.25,
             max_distance=10,
-            corepoint_normals=np.tile([0, 0, 1], (corepoints.shape[0], 1))
+            corepoint_normals=np.tile([0, 0, 1], (corepoints.shape[0], 1)),
+            registration_error = 0.0
         )
         bitemp_distances, _ = m3c2_run.run()
         distances = np.append(distances, bitemp_distances.reshape((-1,1)), axis=1)
