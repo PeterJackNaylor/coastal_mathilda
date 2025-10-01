@@ -23,6 +23,9 @@ from tqdm import tqdm
 from shutil import copy 
 import optuna
 import gc
+import py4dgeo
+from pc_utils import *
+from plot_utils import *
 
 
 def predict(array, model, attribute="model"):
@@ -95,69 +98,6 @@ def parser_f():
     return args
 
 
-# def plot(data, model, step_xy, step_t, name, trial, save=False):
-#     try:
-#         os.mkdir(name)
-#     except:
-#         pass
-
-#     grid, n, p = setup_uniform_grid(data, step_xy)
-#     vmin, vmax = -55, -46
-#     extent = [grid[:, 0].min(), grid[:, 0].max(), grid[:, 1].min(), grid[:, 1].max()]
-#     results = np.zeros_like(grid[:, 0])
-#     time_nrm = model.data.nv_samples[0]
-#     lat_nrm = model.data.nv_samples[1]
-#     lon_nrm = model.data.nv_samples[2]
-#     z_nrm = model.data.nv_targets[0]
-
-#     grid[:, 0] = (grid[:, 0] - lat_nrm[0]) / lat_nrm[1]
-#     grid[:, 1] = (grid[:, 1] - lon_nrm[0]) / lon_nrm[1]
-#     xyt = np.column_stack([results.copy(), grid])
-
-#     time = data[:, 0]
-#     time_range = np.arange(time.min(), time.max(), step_t)
-#     times = time_range.copy()
-#     time_range = time_range.astype(int)
-#     times = (times - time_nrm[0]) / time_nrm[1]
-#     time_predictions = []
-#     for it in range(times.shape[0]):
-#         xyt[:, 0] = times[it]
-#         tensor_xyt = torch.from_numpy(xyt).to(model.device, dtype=model.dtype)
-#         prediction = predict(tensor_xyt, model)
-#         prediction = prediction.to("cpu", dtype=torch.float64).numpy()
-#         real_pred = prediction[:, 0] * z_nrm[1] + z_nrm[0]
-#         results = real_pred
-#         time_predictions.append(real_pred)
-#         if save:
-#             heatmap = results.copy().reshape(n, p, order="F")
-#             heatmap[heatmap == 0] = np.nan
-#             date = days_to_time_string(time_range[it])
-#             plt.imshow(
-#                 heatmap[::-1].T, extent=extent, vmin=vmin, vmax=vmax,
-#             )
-#             plt.xlabel("Lon")
-#             plt.ylabel("Lat")
-#             plt.title(f"Altitude at {date}")
-#             plt.colorbar()
-#             plt.savefig(f"{name}/heatmap_{date}.png")
-#             plt.close()
-#     time_predictions = np.column_stack(time_predictions)
-#     results = time_predictions.std(axis=1) / step_t
-#     time_std = results.copy().reshape(n, p, order="F")
-#     time_std[time_std == 0] = np.nan
-#     time_std = np.log(time_std + 1) / np.log(10)
-#     plt.imshow(time_std[::-1].T, extent=extent)
-#     plt.xlabel("Lon")
-#     plt.ylabel("Lat")
-#     plt.title("Pixel wise np.log(STD) per day")
-#     plt.colorbar()
-#     plt.savefig(f"{name}/time_std_trial_{trial}.png")
-#     plt.close()
-#     return time_predictions
-
-
-
-
 def setup_hp(
     yaml_params,
     data,
@@ -212,56 +152,6 @@ def downsample_pointcloud(data, max_points=1000000):
     
     return indices
 
-def plot_pc(y_gt, y_pred, input_data, nv_samples, suffix="", name="outputs"):
-
-    try:
-        os.mkdir(f"{name}/pc_{suffix}")
-    except:
-        pass
-    input_data_n = input_data.copy()
-    num = len(nv_samples)
-    for i in range(num):
-        input_data_n[:, i] = input_data[:, i] * nv_samples[i][1] + nv_samples[i][0]
-    time_stamps = np.unique(input_data_n[:, 0])
-    for t in time_stamps:   
-        idx = np.where(input_data_n[:, 0] == t)[0]
-        input_data_t = input_data_n[idx, :]
-        y_pred_t = y_pred[idx]
-        y_gt_t = y_gt[idx]
-
-
-        vmin = -40 #min(min(y_pred_t), min(y_gt_t))
-        vmax = -55 #max(y_pred_t.max(), y_gt_t.max())
-        
-        idx_2 = downsample_pointcloud(input_data_t, max_points=100000)
-        input_data_t = input_data_t[idx_2, :]
-        y_pred_t = y_pred_t[idx_2].squeeze()
-        y_gt_t = y_gt_t[idx_2].squeeze()
-
-        fig, axes = plt.subplots(1, 3, figsize=(10, 30))
-        scatter1 = axes[0].scatter(input_data_t[:, 1], input_data_t[:, 2], c=y_pred_t, s=0.01,
-                                 cmap='viridis', vmin=vmin, vmax=vmax)
-        axes[0].set_title('Predicted Values')
-        plt.colorbar(scatter1, ax=axes[0])
-        
-        scatter2 = axes[1].scatter(input_data_t[:, 1], input_data_t[:, 2], c=y_gt_t, s=0.01,
-                                 cmap='viridis', vmin=vmin, vmax=vmax)
-        axes[1].set_title('Ground Truth')
-        plt.colorbar(scatter2, ax=axes[1])
-        diff = y_gt_t - y_pred_t
-        diff_log = np.log(np.abs(diff) + 1) * np.sign(diff)
-        boundary = max(abs(diff_log.min()), abs(diff_log.max()))
-        # Difference plot
-        scatter3 = axes[2].scatter(input_data_t[:, 1], input_data_t[:, 2], c=diff_log, s=0.1,
-                                vmin=-boundary, vmax=boundary, cmap='RdBu_r')
-        axes[2].set_title('Difference (GT - pred)')
-        plt.colorbar(scatter3, ax=axes[2])
-        
-        plt.tight_layout()
-        plt.savefig(f"{name}/pc_{suffix}/comparison_time_{days_to_time_string(t)}_{suffix}.png")
-        plt.close()
-
-
 
 def evaluation(model, name, encoding):
     z_nrm = model.data.nv_targets[0]
@@ -296,8 +186,6 @@ def evaluation(model, name, encoding):
     rmse_all = rmse(all_targets, all_predictions)
 
     return [mae_train, mae_test, mae_all, rmse_train, rmse_test, rmse_all]
-
-
 
 
 def save_results(variables, name):
@@ -374,6 +262,7 @@ def plot_NN(NN, model_hp, name):
             plt.close()
         except:
             print(f"{name}/Couldn't plot t_weights for {key}")
+
 
 def days_to_time_string(days, reference_date="190101_000000"):
     # Parse the reference date
@@ -474,6 +363,16 @@ def load_data_faster(opt = "default", path="/home/mletard/compute/4dinr/data"):
 
     return np.load(filename), np.load(filename_index)
 
+def load_eval_data_faster(opt, path="/home/mletard/compute/4dinr/data"):
+    if "seasonal_beach" in opt:
+        change_pts = path+"/seasonal_beach_change.npy"
+        change_values = path+"/seasonal_beach_change_values.npy"
+        time_series = path+"/seasonal_beach_timeseries.npy"
+        time_series_gt = py4dgeo.SpatiotemporalAnalysis(path+"/seasonal_beach.zip")
+
+    return np.load(change_pts), np.load(change_values), np.load(time_series), time_series_gt
+
+
 def split_test(data, index):
     if index is None:
         return data, data[:1000].copy(), None
@@ -484,11 +383,12 @@ def split_test(data, index):
 
 def evaluation_test(model, data, name, encoding):
     if not encoding:
-        data_txy = data[:, :3].copy()
-        test_targets = data[:, 3:4]
+        data_txy = data[:, [0,-3,-2]].copy()
+        test_targets = data[:, -1:]
     else:
-        data_txy = data[:, :12].copy()
-        test_targets = data[:, 12:13]
+        data_txy = data[:, 1:-1].copy()
+        test_targets = data[:, -1:]
+    
     model.test_set.normalize(data_txy, model.test_set.nv_samples, True)
     z_pred = predict(torch.tensor(data_txy).cuda().float(), model)
     z_nrm = model.data.nv_targets[0]
@@ -502,56 +402,112 @@ def evaluation_test(model, data, name, encoding):
     # RMSE
     rmse_test = rmse(torch.tensor(test_targets).cuda(), test_pred)
 
+    test_pred = test_pred.flatten().cpu().float().numpy()
+    pred_xyz = np.concatenate((data[:,[-3,-2]], test_pred.reshape((-1,1))), axis=1)
+    scale = 1.0
+    rough_gt, dzdx_true, dzdy_true = get_roughness(data[:, [-3,-2,-1]], data[:, [-3,-2,-1]], scale)
+    rough_pred, dzdx_pred, dzdy_pred = get_roughness(pred_xyz[:], pred_xyz, scale) #::10
+    plot_feature(rough_gt, rough_pred, data_txy, model.data.nv_samples, scale, suffix="test", name=name, feat_name="Roughness")
+    plot_feature(dzdx_true, dzdx_pred, data_txy, model.data.nv_samples, scale, suffix="test", name=name, feat_name="DzDx")
+    plot_feature(dzdy_true, dzdy_pred, data_txy, model.data.nv_samples, scale, suffix="test", name=name, feat_name="DzDy")
+    scale = 3.0
+    rough_gt, dzdx_true, dzdy_true = get_roughness(data[:, [-3,-2,-1]], data[:, [-3,-2,-1]], scale)
+    rough_pred, dzdx_pred, dzdy_pred = get_roughness(pred_xyz[:], pred_xyz, scale) #::10
+    plot_feature(rough_gt, rough_pred, data_txy, model.data.nv_samples, scale, suffix="test", name=name, feat_name="Roughness")
+    plot_feature(dzdx_true, dzdx_pred, data_txy, model.data.nv_samples, scale, suffix="test", name=name, feat_name="DzDx")
+    plot_feature(dzdy_true, dzdy_pred, data_txy, model.data.nv_samples, scale, suffix="test", name=name, feat_name="DzDy")
+    scale = 5.0
+    rough_gt, dzdx_true, dzdy_true = get_roughness(data[:, [-3,-2,-1]], data[:, [-3,-2,-1]], scale)
+    rough_pred, dzdx_pred, dzdy_pred = get_roughness(pred_xyz[:], pred_xyz, scale) #::10
+    plot_feature(rough_gt, rough_pred, data_txy, model.data.nv_samples, scale, suffix="test", name=name, feat_name="Roughness")
+    plot_feature(dzdx_true, dzdx_pred, data_txy, model.data.nv_samples, scale, suffix="test", name=name, feat_name="DzDx")
+    plot_feature(dzdy_true, dzdy_pred, data_txy, model.data.nv_samples, scale, suffix="test", name=name, feat_name="DzDy")
     return [mae_test, rmse_test]
 
-def test_histo(ztrue, zpred, name, suffix=''):
 
-    errors = ztrue.squeeze() - zpred.squeeze()
-    lower_percentile = 1
-    upper_percentile = 99
-    low, high = np.percentile(errors, [lower_percentile, upper_percentile])
-    filtered_errors = errors[(errors >= low) & (errors <= high)]
-    cmap = plt.cm.RdBu_r
-    norm_full = plt.Normalize(-max(abs(errors.min()), abs(errors.max())), 
-                            max(abs(errors.min()), abs(errors.max())))
-    
-    norm_filtered = plt.Normalize(-max(abs(filtered_errors.min()), abs(filtered_errors.max())), 
-                                max(abs(filtered_errors.min()), abs(filtered_errors.max())))
-    fig, axes = plt.subplots(1, 2, figsize=(14, 5))
-    
-    # Histogramme complet
-    counts, bins, patches = axes[0].hist(errors, bins=30, edgecolor="black", alpha=0.9)
-    for patch, left, right in zip(patches, bins[:-1], bins[1:]):
-        center = 0.5 * (left + right)
-        try:
-            for bar in patch:
-                bar.set_facecolor(cmap(norm_full(center)))
-        except:
-            patch.set_facecolor(cmap(norm_full(center)))
-    axes[0].axvline(0, color="black", linestyle="--", linewidth=1)
-    axes[0].set_title("Histogram of Prediction Errors (full)", fontsize=12, weight="bold")
-    axes[0].set_xlabel("Error (y_true - y_pred)")
-    axes[0].set_ylabel("Frequency")
-    axes[0].grid(alpha=0.3)
+def evaluation_with_change(model, data, change_values, name, encoding):
+    if not encoding:
+        data_txy = data[:, [0,-3,-2]].copy()
+        test_targets = data[:, -1:]
+    else:
+        data_txy = data[:, 1:-1].copy()
+        test_targets = data[:, -1:]
+    print(data_txy.shape)
+    dates = np.unique(data_txy[:,0])
+    test_date = np.where(data_txy[:,0]== dates[-2])[0]
+    data_txy = data_txy[test_date]
+    test_targets = test_targets[test_date]
+    change_values = change_values[test_date]
+    model.test_set.normalize(data_txy, model.test_set.nv_samples, True)
+    z_pred = predict(torch.tensor(data_txy).cuda().float(), model)
+    z_nrm = model.data.nv_targets[0]
+    test_pred = z_pred * z_nrm[1] + z_nrm[0]
+    error_test = torch.absolute(torch.tensor(test_targets).cuda() - test_pred)
+    plot_error_change(error_test.cpu(), change_values, name, "test")
+    #plot point-wise error with respect to change that occurred at that point
 
-    # Histogramme filtré par percentiles
-    counts_f, bins_f, patches_f = axes[1].hist(filtered_errors, bins=30, edgecolor="black", alpha=0.9)
-    for patch, left, right in zip(patches_f, bins_f[:-1], bins_f[1:]):
-        center = 0.5 * (left + right)
-        # Do:
-        # for bar in patch:
-        #     bar.set_facecolor(cmap(norm_filtered(center)))
-        patch.set_facecolor(cmap(norm_filtered(center)))
-    axes[1].axvline(0, color="black", linestyle="--", linewidth=1)
-    axes[1].set_title(f"Histogram of Prediction Errors ({lower_percentile}-{upper_percentile} percentile)", 
-                    fontsize=12, weight="bold")
-    axes[1].set_xlabel("Error (y_true - y_pred)")
-    axes[1].set_ylabel("Frequency")
-    axes[1].grid(alpha=0.3)
 
+def evaluation_timeseries(model, data, ts_gt, name, encoding, suffix="test"):
+    if not encoding:
+        data_txy = data[:, [0,-3,-2]].copy()
+        test_targets = data[:, -1:]
+    else:
+        data_txy = data[:, 1:-1].copy()
+        test_targets = data[:, -1:]
+    elevations_true = ts_gt.distances
+    valid_id = np.where(np.any(np.isnan(elevations_true), axis=1) == False)[0]
+    valid_id_sel = np.random.choice(valid_id, 1, replace=False)
+    cp_idx_sel = valid_id_sel[0]
+    coords = ts_gt.corepoints.cloud[cp_idx_sel]
+    pt_id = np.where((data_txy[:,-2]==coords[0])&(data_txy[:,-1]==coords[1]))[0]
+    data_txy = data_txy[pt_id]
+    test_targets = test_targets[pt_id]
+    model.test_set.normalize(data_txy, model.test_set.nv_samples, True)
+    z_pred = predict(torch.tensor(data_txy).cuda().float(), model)
+    z_nrm = model.data.nv_targets[0]
+    test_pred = z_pred * z_nrm[1] + z_nrm[0]
+    ts_pred = test_pred.cpu()
+
+    plt.rcParams.update({
+        'font.size': 22,          # base font size
+        'axes.titlesize': 20,     # title font size
+        'axes.labelsize': 18,     # x/y labels
+        'lines.linewidth': 3,     # line width
+        'lines.markersize': 2,   # default marker size
+        'xtick.labelsize': 14,
+        'ytick.labelsize': 14,
+        'legend.fontsize': 16
+    })
+    fig = plt.figure(figsize=(20,7))
+    gs = fig.add_gridspec(1, 2, width_ratios=[2, 1])
+    ax1 = fig.add_subplot(gs[0])#, projection='3d', computed_zorder=False)
+    ax2 = fig.add_subplot(gs[1])
+    corepoints = ts_gt.corepoints.cloud
+    distances_epoch = [d[0] for d in elevations_true]
+    timeseries_sel = elevations_true[cp_idx_sel]
+    timestamps = [t + ts_gt.reference_epoch.timestamp for t in ts_gt.timedeltas]
+    d = ax1.scatter(corepoints[:,1], corepoints[:,0], c=distances_epoch[:], cmap='viridis', s=1, zorder=1)
+    plt.colorbar(d, format=('%.2f'), label='Elevation [m]', ax=ax1, shrink=.5, pad=.15, orientation='horizontal')
+    ax1.scatter(coords[1], coords[0], c='white', s=300, zorder=2, label='Selected location', marker='*',facecolors='white', edgecolors='black', linewidths=1)
+    ax1.legend()
+    ax1.tick_params(labelbottom=False, labelleft=False)
+    ax1.set_xlabel('Y [m]')
+    ax1.set_ylabel('X [m]')
+    ax1.set_aspect('equal')
+    ax1.set_title('Elevation at %s' % (ts_gt.reference_epoch.timestamp+ts_gt.timedeltas[1]))
+    ax2.plot(timestamps, timeseries_sel, color='gray', linestyle='-', zorder=1)
+    ax2.plot(timestamps, ts_pred, color='gray', linestyle='-', zorder=1)
+    ax2.scatter(timestamps, timeseries_sel, c=timeseries_sel, s=150, cmap='viridis', zorder=2, label='Measured')
+    ax2.scatter(timestamps, ts_pred, c=ts_pred, marker="x", s=150, cmap='viridis', zorder=2, label='Predicted')
+    ax2.legend()
+    ax2.set_xlabel('Date')
+    ax2.set_ylabel('Elevation [m]')
+    ax2.set_title('Time series at selected location')
+    ax2.tick_params(axis='x', rotation=45)
     plt.tight_layout()
-    plt.savefig(f"{name}/pc_{suffix}/histo_errors_time_{suffix}.png")
-    plt.close()
+    plt.savefig(f"{name}/pc_{suffix}/time_series_plot_{suffix}_{str(cp_idx_sel)}.png")    
+    #plot pred time series + true time series
+    #compute time series metrics
 
 
 def sample_hp(hp, trial):
@@ -678,26 +634,30 @@ def main():
     train_dataloader, val_dataloader = return_dataset(model_hp, data, model_hp.gpu, index, encoding)
     def dataset_fn(hp, gpu):
         return train_dataloader, val_dataloader
-    objective = partial(objective_optuna, model_hp=model_hp, data_fn=dataset_fn, name=opt.name)
+    # objective = partial(objective_optuna, model_hp=model_hp, data_fn=dataset_fn, name=opt.name)
 
-    study = optuna.create_study(
-        study_name=opt.name,
-        direction="minimize",
-        sampler=optuna.samplers.TPESampler(),
-        pruner=optuna.pruners.HyperbandPruner(),
-    )
-    study.optimize(objective, n_trials=model_hp.optuna["trials"])
-    scores_id = get_n_best_trials(study)
-    id_trial = scores_id[-1][0]
+    # study = optuna.create_study(
+    #     study_name=opt.name,
+    #     direction="minimize",
+    #     sampler=optuna.samplers.TPESampler(),
+    #     pruner=optuna.pruners.HyperbandPruner(),
+    # )
+    # study.optimize(objective, n_trials=model_hp.optuna["trials"])
+    # scores_id = get_n_best_trials(study)
+    # id_trial = scores_id[-1][0]
+    id_trial = 32
     npz = f"{opt.name}/multiple/optuna_{id_trial}.npz"
     weights = f"{opt.name}/multiple/optuna_{id_trial}.pth"
     model_hp.device = "cuda" if model_hp.gpu else "cpu"
     NN = load_model(model_hp, weights, npz, data, index, encoding)
     # time_preds = plot(data, NN, opt.name, 0, True)  # 0 is trial
-    metrics = evaluation(NN, opt.name, encoding)
+    # metrics = evaluation(NN, opt.name, encoding)
     metrics_test = evaluation_test(NN, data_test, opt.name, encoding)
+    change_pts, change_values, ts_pts, ts_gt = load_eval_data_faster(keyword)
+    # evaluation_with_change(NN, change_pts, change_values, opt.name, encoding)
+    evaluation_timeseries(NN, ts_pts, ts_gt, opt.name, encoding)
     # import pdb; pdb.set_trace()
-    save_results(metrics + metrics_test, opt.name)
+    # save_results(metrics + metrics_test, opt.name)
     # plot_NN(NN, model_hp, opt.name)
 
 
