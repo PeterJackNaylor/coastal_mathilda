@@ -93,7 +93,7 @@ def gt_elevation_ts(data_path, save_path, corepoints_path, name, make_analysis =
     # plt.show()
 
 
-def pair_m3c2(data_path, corepoints_path, save_path, name):
+def pair_m3c2(data_path, save_path, name):
     pc_list = []
     files = os.listdir(data_path)
     for ff in files:
@@ -108,11 +108,15 @@ def pair_m3c2(data_path, corepoints_path, save_path, name):
 
     asort = np.argsort(timestamps)
     distances = np.empty((0, 2))
-    for k in range(1,asort.shape[0],1):
-        reference_epoch = py4dgeo.read_from_las(pc_list[k])
-        before_epoch = py4dgeo.read_from_las(pc_list[k-1])
-        after_epoch = py4dgeo.read_from_las(pc_list[k+1])
-    
+    coordinates = np.empty((0,3))
+    times = np.empty((0,1))
+    for k in range(1,asort.shape[0]-1,1):
+        ref_id = asort[k]
+        before_id = asort[k-1]
+        after_id = asort[k+1]
+        reference_epoch = py4dgeo.read_from_las(pc_list[ref_id])
+        before_epoch = py4dgeo.read_from_las(pc_list[before_id])
+        after_epoch = py4dgeo.read_from_las(pc_list[after_id])
         m3c2_before = py4dgeo.m3c2.M3C2(
             epochs=(reference_epoch, before_epoch),
             corepoints=reference_epoch.cloud,
@@ -131,9 +135,12 @@ def pair_m3c2(data_path, corepoints_path, save_path, name):
         )
         before_distances, _ = m3c2_before.run()
         after_distances, _ = m3c2_after.run()
-        date_change = np.concatenate((before_distances,after_distances), axis=0)
-        distances = np.append(distances, date_change.reshape((-1,2)), axis=1)
-    tosave = np.concatenate((corepoints, distances), axis=1)
+        date_change = np.concatenate((before_distances.reshape((-1,1)),after_distances.reshape((-1,1))), axis=1)
+        distances = np.append(distances, date_change, axis=0)
+        coordinates = np.append(coordinates, reference_epoch.cloud, axis=0)
+        time = np.repeat(timestamps[ref_id], before_distances.shape[0]).reshape((-1,1))
+        times = np.append(times, time, axis=0)
+    tosave = np.concatenate((times, coordinates, distances), axis=1)
     np.save(f'{save_path}/bitemporal_change_{name}.npy', tosave)
 
 
@@ -221,12 +228,14 @@ def prepare_cd_for_model(save_path, name):
     np.save(f'{save_path}/{name}_change_values.npy', all_distances)
 
 def main():
-    data_path = '/home/mletard/compute/4dinr/data'
-    # core_path = '/Users/mletard/Desktop/seasonal_merged_10cm.las'
-    save_path = '/home/mletard/compute/4dinr/data'
-    # pair_m3c2(data_path, core_path, save_path, "seasonal_beach")
+    # data_path = '/home/mletard/compute/4dinr/data'
+    # core_path = '/Users/mletard/Desktop/seasonal_grid_25cm.las'
+    save_path = '/Users/mletard/Desktop'
+    data_path = '/Users/mletard/Desktop/daily_beach'
+    # save_path = '/home/mletard/compute/4dinr/data'
+    pair_m3c2(data_path, save_path, "daily_beach")
     # gt_elevation_ts(data_path, save_path, core_path, "seasonal_beach", True)
-    prepare_cd_for_model(save_path, "seasonal_beach")
+    # prepare_cd_for_model(save_path, "seasonal_beach")
 
 
 if __name__ == "__main__":
