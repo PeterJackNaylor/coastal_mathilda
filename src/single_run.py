@@ -425,14 +425,15 @@ def evaluation_test(model, data, name, encoding):
     return [mae_test, rmse_test]
 
 
-def evaluation_with_change(model, data, change_values, name, encoding):
+def evaluation_with_change(model, change_data, name, encoding):
+    data = change_data[:,:-2]
+    change = change_data[:,-2:]
     if not encoding:
         data_txy = data[:, [0,-3,-2]].copy()
         test_targets = data[:, -1:]
     else:
         data_txy = data[:, 1:-1].copy()
         test_targets = data[:, -1:]
-    print(data_txy.shape)
     dates = np.unique(data_txy[:,0])
     test_date = np.where(data_txy[:,0]== dates[-2])[0]
     data_txy = data_txy[test_date]
@@ -652,10 +653,10 @@ def main():
     NN = load_model(model_hp, weights, npz, data, index, encoding)
     # time_preds = plot(data, NN, opt.name, 0, True)  # 0 is trial
     # metrics = evaluation(NN, opt.name, encoding)
-    metrics_test = evaluation_test(NN, data_test, opt.name, encoding)
+    # metrics_test = evaluation_test(NN, data_test, opt.name, encoding)
     change_pts, change_values, ts_pts, ts_gt = load_eval_data_faster(keyword)
-    # evaluation_with_change(NN, change_pts, change_values, opt.name, encoding)
-    evaluation_timeseries(NN, ts_pts, ts_gt, opt.name, encoding)
+    evaluation_with_change(NN, change_pts, change_values, opt.name, encoding)
+    # evaluation_timeseries(NN, ts_pts, ts_gt, opt.name, encoding)
     # import pdb; pdb.set_trace()
     # save_results(metrics + metrics_test, opt.name)
     # plot_NN(NN, model_hp, opt.name)
