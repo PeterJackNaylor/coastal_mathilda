@@ -106,10 +106,12 @@ def pair_m3c2(data_path, save_path, name):
         timestamp = datetime.strptime(timestamp_str, '%y%m%d_%H%M%S')
         timestamps.append(timestamp)
 
+    encodings, days_el = encode_time_info(Time(timestamps)) #not sorted
     asort = np.argsort(timestamps)
     distances = np.empty((0, 2))
     coordinates = np.empty((0,3))
-    times = np.empty((0,1))
+    t = np.empty((0,1))
+    encoding = np.empty((0,10))
     for k in range(1,asort.shape[0]-1,1):
         ref_id = asort[k]
         before_id = asort[k-1]
@@ -138,9 +140,11 @@ def pair_m3c2(data_path, save_path, name):
         date_change = np.concatenate((before_distances.reshape((-1,1)),after_distances.reshape((-1,1))), axis=1)
         distances = np.append(distances, date_change, axis=0)
         coordinates = np.append(coordinates, reference_epoch.cloud, axis=0)
-        time = np.repeat(timestamps[ref_id], before_distances.shape[0]).reshape((-1,1))
-        times = np.append(times, time, axis=0)
-    tosave = np.concatenate((times, coordinates, distances), axis=1)
+        t_ = np.repeat(days_el[ref_id], before_distances.shape[0]).reshape((-1,1))
+        enc_ = np.repeat(encodings[ref_id].reshape((1,10)), before_distances.shape[0], axis=0)
+        t = np.append(t, t_, axis=0)
+        encoding = np.append(encoding, enc_, axis=0)
+    tosave = np.concatenate((t, encoding, coordinates, distances), axis=1)
     np.save(f'{save_path}/bitemporal_change_{name}.npy', tosave)
 
 
@@ -231,9 +235,9 @@ def main():
     # data_path = '/home/mletard/compute/4dinr/data'
     # core_path = '/Users/mletard/Desktop/seasonal_grid_25cm.las'
     save_path = '/Users/mletard/Desktop'
-    data_path = '/Users/mletard/Desktop/daily_beach'
+    data_path = '/Users/mletard/Desktop/seasonal_beach'
     # save_path = '/home/mletard/compute/4dinr/data'
-    pair_m3c2(data_path, save_path, "daily_beach")
+    pair_m3c2(data_path, save_path, "seasonal_beach")
     # gt_elevation_ts(data_path, save_path, core_path, "seasonal_beach", True)
     # prepare_cd_for_model(save_path, "seasonal_beach")
 
