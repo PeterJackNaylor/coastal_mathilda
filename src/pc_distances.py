@@ -94,8 +94,6 @@ def gt_elevation_ts(data_path, save_path, corepoints_path, name, make_analysis =
 
 
 def pair_m3c2(data_path, corepoints_path, save_path, name):
-    core_pc = py4dgeo.read_from_las(corepoints_path)
-    corepoints = core_pc.cloud
     pc_list = []
     files = os.listdir(data_path)
     for ff in files:
@@ -109,23 +107,32 @@ def pair_m3c2(data_path, corepoints_path, save_path, name):
         timestamps.append(timestamp)
 
     asort = np.argsort(timestamps)
-    distances = np.empty((corepoints.shape[0], 0))
+    distances = np.empty((0, 2))
     for k in range(1,asort.shape[0],1):
-        ref_id = asort[k-1]
-        targ_id = asort[k]
-        reference_epoch = py4dgeo.read_from_las(pc_list[ref_id])
-        target_epoch = py4dgeo.read_from_las(pc_list[targ_id])
+        reference_epoch = py4dgeo.read_from_las(pc_list[k])
+        before_epoch = py4dgeo.read_from_las(pc_list[k-1])
+        after_epoch = py4dgeo.read_from_las(pc_list[k+1])
     
-        m3c2_run = py4dgeo.m3c2.M3C2(
-            epochs=(reference_epoch, target_epoch),
-            corepoints=corepoints,
+        m3c2_before = py4dgeo.m3c2.M3C2(
+            epochs=(reference_epoch, before_epoch),
+            corepoints=reference_epoch.cloud,
             cyl_radius=0.25,
             max_distance=10,
-            corepoint_normals=np.tile([0, 0, 1], (corepoints.shape[0], 1)),
+            corepoint_normals=np.tile([0, 0, 1], (reference_epoch.cloud.shape[0], 1)),
             registration_error = 0.0
         )
-        bitemp_distances, _ = m3c2_run.run()
-        distances = np.append(distances, bitemp_distances.reshape((-1,1)), axis=1)
+        m3c2_after = py4dgeo.m3c2.M3C2(
+            epochs=(reference_epoch, after_epoch),
+            corepoints=reference_epoch.cloud,
+            cyl_radius=0.25,
+            max_distance=10,
+            corepoint_normals=np.tile([0, 0, 1], (reference_epoch.cloud.shape[0], 1)),
+            registration_error = 0.0
+        )
+        before_distances, _ = m3c2_before.run()
+        after_distances, _ = m3c2_after.run()
+        date_change = np.concatenate((before_distances,after_distances), axis=0)
+        distances = np.append(distances, date_change.reshape((-1,2)), axis=1)
     tosave = np.concatenate((corepoints, distances), axis=1)
     np.save(f'{save_path}/bitemporal_change_{name}.npy', tosave)
 
