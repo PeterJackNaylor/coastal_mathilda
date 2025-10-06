@@ -26,6 +26,7 @@ import gc
 import py4dgeo
 from pc_utils import *
 from plot_utils import *
+from temp_encoding import *
 
 
 def predict(array, model, attribute="model"):
@@ -450,20 +451,38 @@ def evaluation_with_change(model, change_data, name, encoding):
     #plot point-wise error with respect to change that occurred at that point
 
 
-def evaluation_timeseries(model, data, ts_gt, name, encoding, suffix="test"):
+def evaluation_timeseries(model, data, ts_gt, name, encoding, n_plots=10, suffix="test"):
     elevations_true = ts_gt.distances
-    full_valid_id = np.where(np.any(np.isnan(elevations_true), axis=1) == False)[0]
-    nans = np.count_nonzero(np.isnan(elevations_true), axis=1)
+    timestamps = np.array(([t + ts_gt.reference_epoch.timestamp for t in ts_gt.timedeltas]))
+    corepoints = ts_gt.corepoints.cloud
+    ref_dt = datetime.strptime("190101_000000", '%y%m%d_%H%M%S')
 
-    print(nans.shape)
-    print(nans)
-    print(stop)
+    full_valid_id = np.where(np.any(np.isnan(elevations_true), axis=1) == False)[0]
+    nb_nans = np.count_nonzero(np.isnan(elevations_true), axis=1)
+    gap_filling_id = np.where((nb_nans >= 0.4 * elevations_true.shape[1])&(nb_nans <= 0.6 * elevations_true.shape[1]))[0]
+
+    half_res = np.array((timestamps[1:]-timestamps[:-1])) /2
+    newdates = []
+    for srd in range(timestamps.shape[0]-1):
+        newdates.append(timestamps[srd] + half_res[srd])
+
+    encod_newdates, days_el_newdates = encode_time_info(Time(newdates))
+    super_res_id_sel = np.random.choice(full_valid_id, n_plots, replace=False)
+    super_res_txyz = np.empty((0,14))
+    for sr_id in super_res_id_sel:
+        coords = ts_gt.corepoints.cloud[sr_id,[0,1,2]].reshape((1,-1))
+        new_xyz = np.repeat(coords, encod_newdates.shape[0],axis=0)
+        new_xyz[:,-1] = np.NaN
+        new_txyz = np.concatenate((days_el_newdates.reshape((-1,1)), encod_newdates, new_xyz), axis=1)
+        super_res_txyz = np.append(super_res_txyz, new_txyz, axis=0)
+    
     if not encoding:
-        data_txy = data[:, [0,-3,-2]].copy()
-        test_targets = data[:, -1:]
+        data_txy = np.concatenate((data[:, [0,-3,-2]].copy(), super_res_txyz[:,[0,-3,-2]].copy()),axis=0)
+        raw_txy = data_txy.copy()
+        print(data.shape, data_txy.shape)
     else:
-        data_txy = data[:, 1:-1].copy()
-        test_targets = data[:, -1:]
+        data_txy = np.concatenate((data[:, 1:-1].copy(), super_res_txyz[:,1:-1].copy()), axis=0)
+        raw_txy = data_txy.copy()
     
     model.test_set.normalize(data_txy, model.test_set.nv_samples, True)
     z_pred = predict(torch.tensor(data_txy).cuda().float(), model)
@@ -471,64 +490,36 @@ def evaluation_timeseries(model, data, ts_gt, name, encoding, suffix="test"):
     test_pred = z_pred * z_nrm[1] + z_nrm[0]
     ts_pred = test_pred.cpu()
 
-    #here do the different experiments for
-    # 1 full time series comparison
-    # 2 full time series super resolution
-    # 3 gap filling in incomplete time series
+    full_valid_id_sel = np.random.choice(full_valid_id, n_plots, replace=False)
+    for v_id in full_valid_id_sel:
+        coords = ts_gt.corepoints.cloud[v_id,[0,1]]
+        pt_id = np.where((data[:,-3]==coords[0])&(data[:,-2]==coords[1]))[0]
+        pred_ = ts_pred[pt_id]
+        target_dt=[]
+        for i in pt_id:
+            target_dt.append(ref_dt + timedelta(days=int(data[i,0])))
+        plot_timeseries(elevations_true, pred_, target_dt, timestamps, corepoints, coords, v_id, name, 'time_series_eval', "test")
 
-    # based on the percentage of NaN at XY in the analysis.distances
-    # expes 1 and 2 are when no NaN (initial filter)
-    # expe 3 when NaN between 40 and 60 percent
-
-    elevations_true = ts_gt.distances
-    full_valid_id = np.where(np.any(np.isnan(elevations_true), axis=1) == False)[0]
-    nans = np.count_nonzero(np.isnan(elevations_true), axis=1)
-    full_valid_id_sel = np.random.choice(full_valid_id, 1, replace=False)
-    cp_idx_sel = full_valid_id_sel[0]
-    coords = ts_gt.corepoints.cloud[cp_idx_sel,[0,1]]
-    pt_id = np.where((data_txy[:,-2]==coords[0])&(data_txy[:,-1]==coords[1]))[0]
-    pred_ = ts_pred[pt_id]
-    # data_txy = data_txy[pt_id]
-    # test_targets = test_targets[pt_id]
-
-    plt.rcParams.update({
-        'font.size': 22,          # base font size
-        'axes.titlesize': 20,     # title font size
-        'axes.labelsize': 18,     # x/y labels
-        'lines.linewidth': 3,     # line width
-        'lines.markersize': 2,   # default marker size
-        'xtick.labelsize': 14,
-        'ytick.labelsize': 14,
-        'legend.fontsize': 16
-    })
-    fig = plt.figure(figsize=(20,7))
-    gs = fig.add_gridspec(1, 2, width_ratios=[2, 1])
-    ax1 = fig.add_subplot(gs[0])#, projection='3d', computed_zorder=False)
-    ax2 = fig.add_subplot(gs[1])
-    corepoints = ts_gt.corepoints.cloud
-    distances_epoch = [d[0] for d in elevations_true]
-    timeseries_sel = elevations_true[cp_idx_sel]
-    timestamps = [t + ts_gt.reference_epoch.timestamp for t in ts_gt.timedeltas]
-    d = ax1.scatter(corepoints[:,1], corepoints[:,0], c=distances_epoch[:], cmap='viridis', s=1, zorder=1)
-    plt.colorbar(d, format=('%.2f'), label='Elevation [m]', ax=ax1, shrink=.5, pad=.15, orientation='horizontal')
-    ax1.scatter(coords[1], coords[0], c='white', s=300, zorder=2, label='Selected location', marker='*',facecolors='white', edgecolors='black', linewidths=1)
-    ax1.legend()
-    ax1.tick_params(labelbottom=False, labelleft=False)
-    ax1.set_xlabel('Y [m]')
-    ax1.set_ylabel('X [m]')
-    ax1.set_aspect('equal')
-    ax1.set_title('Elevation at %s' % (ts_gt.reference_epoch.timestamp+ts_gt.timedeltas[1]))
-    ax2.plot(timestamps, timeseries_sel, color='gray', linestyle='-', zorder=1)
-    ax2.plot(timestamps, ts_pred, color='gray', linestyle='-', zorder=1)
-    ax2.scatter(timestamps, timeseries_sel, c=timeseries_sel, s=150, cmap='viridis', zorder=2, label='Measured')
-    ax2.scatter(timestamps, ts_pred, c=ts_pred, marker="x", s=150, cmap='viridis', zorder=2, label='Predicted')
-    ax2.legend()
-    ax2.set_xlabel('Date')
-    ax2.set_ylabel('Elevation [m]')
-    ax2.set_title('Time series at selected location')
-    ax2.tick_params(axis='x', rotation=45)
-    plt.tight_layout()
-    plt.savefig(f"{name}/pc_{suffix}/time_series_plot_{suffix}_{str(cp_idx_sel)}.png")    
+    # super_res_id_sel = np.random.choice(full_valid_id, n_plots, replace=False)
+    for sr_id in super_res_id_sel:
+        coords = ts_gt.corepoints.cloud[sr_id,[0,1]]
+        pt_id = np.where((raw_txy[:,-2]==coords[0])&(raw_txy[:,-1]==coords[1]))[0]
+        pred_ = ts_pred[pt_id]
+        target_dt=[]
+        for i in pt_id:
+            target_dt.append(ref_dt + timedelta(days=int(raw_txy[i,0])))
+        plot_timeseries(elevations_true, pred_, target_dt, timestamps, corepoints, coords, sr_id, name, 'temp_super_res', "test")
+    
+    gap_fill_id_sel = np.random.choice(gap_filling_id, n_plots, replace=False)
+    for gf_id in gap_fill_id_sel:
+        coords = ts_gt.corepoints.cloud[gf_id,[0,1]]
+        pt_id = np.where((data[:,-3]==coords[0])&(data[:,-2]==coords[1]))[0]
+        pred_ = ts_pred[pt_id]
+        target_dt=[]
+        for i in pt_id:
+            target_dt.append(ref_dt + timedelta(days=int(data[i,0])))
+        plot_timeseries(elevations_true, pred_, target_dt, timestamps, corepoints, coords, gf_id, name, 'temp_gap_filling', "test")
+    
     #plot pred time series + true time series
     #compute time series metrics
 
