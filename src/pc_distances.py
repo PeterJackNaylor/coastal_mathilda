@@ -153,93 +153,39 @@ def prepare_ts_for_model(save_path, name):
     timestamps = np.array((analysis.timedeltas)) + analysis.reference_epoch.timestamp
     pts = analysis.corepoints.cloud
     distances = analysis.distances
-    valid_id = np.where(np.any(np.isnan(distances), axis=1) == False)[0]
-    pts = pts[valid_id]
-    time_info = encode_time_info(Time(timestamps))
-    print(time_info[0].shape, time_info[1].shape, pts.shape, valid_id.shape)
+    print(timestamps.shape, pts.shape, distances.shape)
+    # valid_id = np.where(np.any(np.isnan(distances), axis=1) == False)[0]
+    # pts = pts[valid_id]
+    encod, t_days = encode_time_info(Time(timestamps))
+    print(encod.shape, t_days.shape, pts.shape)#, valid_id.shape)
     all_coords = np.empty((0,3), dtype=np.float32)
     all_days_el = np.empty((0), dtype=np.float32)
     all_encodings = np.empty((0,10), dtype=np.float32)
-    for k in range(time_info[0].shape[0]):
-        days_el = np.repeat(time_info[1][k],pts.shape[0])
-        encoding = np.reshape(time_info[0][k], (1,10))
+
+    for k in range(timestamps.shape[0]):
+        days_el = np.repeat(t_days[k],pts.shape[0])
+        encoding = np.reshape(encod[k], (1,10))
         encodings = np.repeat(encoding, pts.shape[0], axis=0)
         all_days_el = np.append(all_days_el, days_el, axis=0)
         all_encodings = np.append(all_encodings, encodings, axis=0)
-        all_coords = np.append(all_coords, pts, axis=0)
-    print(time_info[0].shape[0]*pts.shape[0], all_days_el.shape, all_encodings.shape, all_coords.shape)
-    txyz_eval = np.concatenate((all_days_el.reshape((-1,1)), all_encodings, all_coords), axis=-1)
-    splitid_eval = np.ones((txyz_eval.shape[0]), dtype=np.uint8) * 2
-    print(txyz_eval.shape, splitid_eval.shape)
-    np.save(f'{save_path}/{name}_timeseries.npy', txyz_eval)
-    np.save(f'{save_path}/{name}_timeseries_split.npy', splitid_eval)
-
-def prepare_ts_for_model(save_path, name):
-    analysis = py4dgeo.SpatiotemporalAnalysis(f'{save_path}/{name}.zip')
-    timestamps = np.array((analysis.timedeltas)) + analysis.reference_epoch.timestamp
-    pts = analysis.corepoints.cloud
-    distances = analysis.distances
-    valid_id = np.where(np.any(np.isnan(distances), axis=1) == False)[0]
-    pts = pts[valid_id]
-    time_info = encode_time_info(Time(timestamps))
-    print(time_info[0].shape, time_info[1].shape, pts.shape, valid_id.shape)
-    all_coords = np.empty((0,3), dtype=np.float32)
-    all_days_el = np.empty((0), dtype=np.float32)
-    all_encodings = np.empty((0,10), dtype=np.float32)
-    for k in range(time_info[0].shape[0]):
-        days_el = np.repeat(time_info[1][k],pts.shape[0])
-        encoding = np.reshape(time_info[0][k], (1,10))
-        encodings = np.repeat(encoding, pts.shape[0], axis=0)
-        all_days_el = np.append(all_days_el, days_el, axis=0)
-        all_encodings = np.append(all_encodings, encodings, axis=0)
-        all_coords = np.append(all_coords, pts, axis=0)
-    print(time_info[0].shape[0]*pts.shape[0], all_days_el.shape, all_encodings.shape, all_coords.shape)
-    txyz_eval = np.concatenate((all_days_el.reshape((-1,1)), all_encodings, all_coords), axis=-1)
-    splitid_eval = np.ones((txyz_eval.shape[0]), dtype=np.uint8) * 2
-    print(txyz_eval.shape, splitid_eval.shape)
-    np.save(f'{save_path}/{name}_timeseries.npy', txyz_eval)
-    np.save(f'{save_path}/{name}_timeseries_split.npy', splitid_eval)
-
-
-def prepare_cd_for_model(save_path, name):
-    change_data = np.load(f'{save_path}/bitemporal_change_{name}.npy')
-    pts = change_data[:,:3]
-    distances = change_data[:, 3:]
-    analysis = py4dgeo.SpatiotemporalAnalysis(f'{save_path}/{name}.zip')
-    timestamps = np.array((analysis.timedeltas)) + analysis.reference_epoch.timestamp
-    time_info = encode_time_info(Time(timestamps[1:]))
-    all_coords = np.empty((0,3), dtype=np.float32)
-    all_days_el = np.empty((0), dtype=np.float32)
-    all_encodings = np.empty((0,10), dtype=np.float32)
-    all_distances = np.empty((0,2), dtype=np.float32)
-    for d in range(distances.shape[1]-1):
-        valid_id = np.where(np.any(np.isnan(distances[:,d:d+2]), axis=1) == False)[0]
-        dist = distances[valid_id, d:d+2]
-        coords = pts[valid_id]
-        t = time_info[1][d]
-        t_enc = time_info[0][d]
-        days_el = np.repeat(t, coords.shape[0])
-        encodings = np.repeat(t_enc.reshape((1,10)), coords.shape[0], axis=0)
-        all_days_el = np.append(all_days_el, days_el, axis=0)
-        all_encodings = np.append(all_encodings, encodings, axis=0)
+        xy = pts[:,[0,1]]
+        z = distances[:,k].reshape((-1,1))
+        coords = np.concatenate((xy,z), axis=1)
         all_coords = np.append(all_coords, coords, axis=0)
-        all_distances = np.append(all_distances, dist, axis = 0)
-    
     txyz_eval = np.concatenate((all_days_el.reshape((-1,1)), all_encodings, all_coords), axis=-1)
-    splitid_eval = np.ones((txyz_eval.shape[0]), dtype=np.uint8) * 2
-    np.save(f'{save_path}/{name}_change.npy', txyz_eval)
-    np.save(f'{save_path}/{name}_change_split.npy', splitid_eval)
-    np.save(f'{save_path}/{name}_change_values.npy', all_distances)
+    print(txyz_eval.shape)
+    np.save(f'{save_path}/{name}_timeseries.npy', txyz_eval)
+
 
 def main():
     # data_path = '/home/mletard/compute/4dinr/data'
     # core_path = '/Users/mletard/Desktop/seasonal_grid_25cm.las'
     save_path = '/Users/mletard/Desktop'
     data_path = '/Users/mletard/Desktop/seasonal_beach'
-    # save_path = '/home/mletard/compute/4dinr/data'
-    pair_m3c2(data_path, save_path, "seasonal_beach")
+    save_path = '/home/mletard/compute/4dinr/data'
+    # pair_m3c2(data_path, save_path, "seasonal_beach")
     # gt_elevation_ts(data_path, save_path, core_path, "seasonal_beach", True)
-    # prepare_cd_for_model(save_path, "seasonal_beach")
+    prepare_ts_for_model(save_path, "seasonal_beach")
 
 
 if __name__ == "__main__":

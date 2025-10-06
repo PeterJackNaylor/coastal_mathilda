@@ -366,11 +366,11 @@ def load_data_faster(opt = "default", path="/home/mletard/compute/4dinr/data"):
 def load_eval_data_faster(opt, path="/home/mletard/compute/4dinr/data"):
     if "seasonal_beach" in opt:
         change_pts = path+"/seasonal_beach_change.npy"
-        change_values = path+"/seasonal_beach_change_values.npy"
+        change_data = path+"/bitemporal_change_seasonal_beach.npy"
         time_series = path+"/seasonal_beach_timeseries.npy"
         time_series_gt = py4dgeo.SpatiotemporalAnalysis(path+"/seasonal_beach.zip")
 
-    return np.load(change_pts), np.load(change_values), np.load(time_series), time_series_gt
+    return np.load(change_data), np.load(time_series), time_series_gt
 
 
 def split_test(data, index):
@@ -434,40 +434,62 @@ def evaluation_with_change(model, change_data, name, encoding):
     else:
         data_txy = data[:, 1:-1].copy()
         test_targets = data[:, -1:]
-    dates = np.unique(data_txy[:,0])
-    test_date = np.where(data_txy[:,0]== dates[-2])[0]
-    data_txy = data_txy[test_date]
-    test_targets = test_targets[test_date]
-    change_values = change_values[test_date]
     model.test_set.normalize(data_txy, model.test_set.nv_samples, True)
     z_pred = predict(torch.tensor(data_txy).cuda().float(), model)
     z_nrm = model.data.nv_targets[0]
     test_pred = z_pred * z_nrm[1] + z_nrm[0]
     error_test = torch.absolute(torch.tensor(test_targets).cuda() - test_pred)
-    plot_error_change(error_test.cpu(), change_values, name, "test")
+    # error_test = torch.tensor(test_targets).cuda() - test_pred
+
+    dates = np.unique(data_txy[:,0])
+    for t in dates:
+        t_ = t * model.test_set.nv_samples[0][1] + model.test_set.nv_samples[0][0]
+        test_date = np.where(data_txy[:,0]== t)[0]
+        plot_error_change(error_test[test_date].cpu().numpy().flatten(), np.abs(change[test_date]), t_, name, "test")
+    plot_error_change(error_test.cpu().numpy().flatten(), np.abs(change), 0, name, "test", percentile=0)
     #plot point-wise error with respect to change that occurred at that point
 
 
 def evaluation_timeseries(model, data, ts_gt, name, encoding, suffix="test"):
+    elevations_true = ts_gt.distances
+    full_valid_id = np.where(np.any(np.isnan(elevations_true), axis=1) == False)[0]
+    nans = np.count_nonzero(np.isnan(elevations_true), axis=1)
+
+    print(nans.shape)
+    print(nans)
+    print(stop)
     if not encoding:
         data_txy = data[:, [0,-3,-2]].copy()
         test_targets = data[:, -1:]
     else:
         data_txy = data[:, 1:-1].copy()
         test_targets = data[:, -1:]
-    elevations_true = ts_gt.distances
-    valid_id = np.where(np.any(np.isnan(elevations_true), axis=1) == False)[0]
-    valid_id_sel = np.random.choice(valid_id, 1, replace=False)
-    cp_idx_sel = valid_id_sel[0]
-    coords = ts_gt.corepoints.cloud[cp_idx_sel]
-    pt_id = np.where((data_txy[:,-2]==coords[0])&(data_txy[:,-1]==coords[1]))[0]
-    data_txy = data_txy[pt_id]
-    test_targets = test_targets[pt_id]
+    
     model.test_set.normalize(data_txy, model.test_set.nv_samples, True)
     z_pred = predict(torch.tensor(data_txy).cuda().float(), model)
     z_nrm = model.data.nv_targets[0]
     test_pred = z_pred * z_nrm[1] + z_nrm[0]
     ts_pred = test_pred.cpu()
+
+    #here do the different experiments for
+    # 1 full time series comparison
+    # 2 full time series super resolution
+    # 3 gap filling in incomplete time series
+
+    # based on the percentage of NaN at XY in the analysis.distances
+    # expes 1 and 2 are when no NaN (initial filter)
+    # expe 3 when NaN between 40 and 60 percent
+
+    elevations_true = ts_gt.distances
+    full_valid_id = np.where(np.any(np.isnan(elevations_true), axis=1) == False)[0]
+    nans = np.count_nonzero(np.isnan(elevations_true), axis=1)
+    full_valid_id_sel = np.random.choice(full_valid_id, 1, replace=False)
+    cp_idx_sel = full_valid_id_sel[0]
+    coords = ts_gt.corepoints.cloud[cp_idx_sel,[0,1]]
+    pt_id = np.where((data_txy[:,-2]==coords[0])&(data_txy[:,-1]==coords[1]))[0]
+    pred_ = ts_pred[pt_id]
+    # data_txy = data_txy[pt_id]
+    # test_targets = test_targets[pt_id]
 
     plt.rcParams.update({
         'font.size': 22,          # base font size
@@ -654,9 +676,9 @@ def main():
     # time_preds = plot(data, NN, opt.name, 0, True)  # 0 is trial
     # metrics = evaluation(NN, opt.name, encoding)
     # metrics_test = evaluation_test(NN, data_test, opt.name, encoding)
-    change_pts, change_values, ts_pts, ts_gt = load_eval_data_faster(keyword)
-    evaluation_with_change(NN, change_pts, change_values, opt.name, encoding)
-    # evaluation_timeseries(NN, ts_pts, ts_gt, opt.name, encoding)
+    change_data, ts_pts, ts_gt = load_eval_data_faster(keyword)
+    # evaluation_with_change(NN, change_data, opt.name, encoding)
+    evaluation_timeseries(NN, ts_pts, ts_gt, opt.name, encoding)
     # import pdb; pdb.set_trace()
     # save_results(metrics + metrics_test, opt.name)
     # plot_NN(NN, model_hp, opt.name)

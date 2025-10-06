@@ -154,21 +154,44 @@ def plot_feature(rough_gt, rough_pred, input_data, nv_samples, scale, percentile
         plt.close()
 
 
-def plot_error_change(error, change_value, name, suffix=""):
-    fig, axes = plt.subplots(1, 2, figsize=(14, 5))
-    axes[0].scatter(error, change_value[:,0])
-    axes[1].scatter(error, change_value[:,1])
+def plot_error_change(error, change_value, t, name, suffix="", percentile=1):
+    try:
+        os.mkdir(f"{name}/pc_{suffix}/change_errors")
+    except:
+        pass
     
-    axes[0].set_title("MAE depending on surface change before considered date", fontsize=12, weight="bold")
-    axes[0].set_xlabel("MAE (m)")
-    axes[0].set_ylabel("Surface change (m)")
-    # axes[0].grid(alpha=0.3)
-    axes[1].set_title("MAE depending on surface change after considered date", fontsize=12, weight="bold")
-    axes[1].set_xlabel("MAE (m)")
-    axes[1].set_ylabel("Surface change (m)")
-
+    fig, axes = plt.subplots(1, 2, figsize=(14, 5))
+    _, xmax = np.percentile(error[~np.isnan(change_value[:,0])], [percentile, 100-percentile])
+    _, ymax = np.percentile(change_value[~np.isnan(change_value[:,0]),0], [percentile, 100-percentile])
+    lims = [
+        min(min(error[~np.isnan(change_value[:,0])]), min(change_value[~np.isnan(change_value[:,0]),0])),
+        max(xmax, ymax),
+    ]
+    axes[0].scatter(error[~np.isnan(change_value[:,0])], change_value[~np.isnan(change_value[:,0]),0], s=1, color='green')
+    axes[0].plot(lims, lims, 'k--', label='x=y')
+    axes[0].set_title("Absolute error depending on absolute change before considered date", fontsize=12, weight="bold")
+    axes[0].set_xlabel("|error| (m)")
+    axes[0].set_ylabel("|change| (m)")
+    axes[0].set_aspect('equal')
+    axes[0].set_xlim(lims)
+    axes[0].set_ylim(lims)
+    
+    _, xmax = np.percentile(error[~np.isnan(change_value[:,1])], [percentile, 100-percentile])
+    _, ymax = np.percentile(change_value[~np.isnan(change_value[:,1]),1], [percentile, 100-percentile])
+    lims = [
+        min(min(error[~np.isnan(change_value[:,1])]), min(change_value[~np.isnan(change_value[:,1]),1])),
+        max(xmax, ymax),
+    ]
+    axes[1].scatter(error[~np.isnan(change_value[:,1])], change_value[~np.isnan(change_value[:,1]),1], s=1, color='green')
+    axes[1].plot(lims, lims, 'k--', label='x=y')
+    axes[1].set_title("Absolute error depending on absolute change after considered date", fontsize=12, weight="bold")
+    axes[1].set_xlabel("|error| (m)")
+    axes[1].set_ylabel("|change| (m)")
+    axes[1].set_aspect('equal')
+    axes[1].set_xlim(lims)
+    axes[1].set_ylim(lims)
     plt.tight_layout()
-    plt.savefig(f"{name}/pc_{suffix}/change_errors_time_{suffix}.png")
+    plt.savefig(f"{name}/pc_{suffix}/change_errors/change_errors_time_{days_to_time_string(t)}_{suffix}.png")
     plt.close()
 
 
