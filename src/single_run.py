@@ -670,17 +670,18 @@ def main():
     study.optimize(objective, n_trials=model_hp.optuna["trials"])
     scores_id = get_n_best_trials(study)
     id_trial = scores_id[-1][0]
+    print("\nBest trial is trial ", id_trial)
     npz = f"{opt.name}/multiple/optuna_{id_trial}.npz"
     weights = f"{opt.name}/multiple/optuna_{id_trial}.pth"
     model_hp.device = "cuda" if model_hp.gpu else "cpu"
     NN = load_model(model_hp, weights, npz, data, index, encoding)
-    time_preds = plot(data, NN, opt.name, 0, True)  # 0 is trial
+    # time_preds = plot(data, NN, opt.name, 0, True)  # 0 is trial
     metrics = evaluation(NN, opt.name, encoding)
     metrics_test = evaluation_test(NN, data_test, opt.name, encoding)
     change_data, ts_pts, ts_gt = load_eval_data_faster(keyword)
     evaluation_with_change(NN, change_data, opt.name, encoding)
     evaluation_timeseries(NN, ts_pts, ts_gt, opt.name, encoding)
-    import pdb; pdb.set_trace()
+    # import pdb; pdb.set_trace()
     save_results(metrics + metrics_test, opt.name)
     plot_NN(NN, model_hp, opt.name)
 
