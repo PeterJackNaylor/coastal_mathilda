@@ -366,10 +366,21 @@ def load_data_faster(opt = "default", path="/home/mletard/compute/4dinr/data"):
 
 def load_eval_data_faster(opt, path="/home/mletard/compute/4dinr/data"):
     if "seasonal_beach" in opt:
-        change_pts = path+"/seasonal_beach_change.npy"
         change_data = path+"/bitemporal_change_seasonal_beach.npy"
         time_series = path+"/seasonal_beach_timeseries.npy"
         time_series_gt = py4dgeo.SpatiotemporalAnalysis(path+"/seasonal_beach.zip")
+    elif "monthly_beach" in opt:
+        change_data = path+"/bitemporal_change_monthly_beach.npy"
+        time_series = path+"/monthly_beach_timeseries.npy"
+        time_series_gt = py4dgeo.SpatiotemporalAnalysis(path+"/monthly_beach.zip")
+    elif "weekly_beach" in opt:
+        change_data = path+"/bitemporal_change_weekly_beach.npy"
+        time_series = path+"/weekly_beach_timeseries.npy"
+        time_series_gt = py4dgeo.SpatiotemporalAnalysis(path+"/weekly_beach.zip")
+    elif "daily_beach" in opt:
+        change_data = path+"/bitemporal_change_daily_beach.npy"
+        time_series = path+"/daily_beach_timeseries.npy"
+        time_series_gt = py4dgeo.SpatiotemporalAnalysis(path+"/daily_beach.zip")
 
     return np.load(change_data), np.load(time_series), time_series_gt
 
@@ -648,31 +659,30 @@ def main():
     train_dataloader, val_dataloader = return_dataset(model_hp, data, model_hp.gpu, index, encoding)
     def dataset_fn(hp, gpu):
         return train_dataloader, val_dataloader
-    # objective = partial(objective_optuna, model_hp=model_hp, data_fn=dataset_fn, name=opt.name)
+    objective = partial(objective_optuna, model_hp=model_hp, data_fn=dataset_fn, name=opt.name)
 
-    # study = optuna.create_study(
-    #     study_name=opt.name,
-    #     direction="minimize",
-    #     sampler=optuna.samplers.TPESampler(),
-    #     pruner=optuna.pruners.HyperbandPruner(),
-    # )
-    # study.optimize(objective, n_trials=model_hp.optuna["trials"])
-    # scores_id = get_n_best_trials(study)
-    # id_trial = scores_id[-1][0]
-    id_trial = 32
+    study = optuna.create_study(
+        study_name=opt.name,
+        direction="minimize",
+        sampler=optuna.samplers.TPESampler(),
+        pruner=optuna.pruners.HyperbandPruner(),
+    )
+    study.optimize(objective, n_trials=model_hp.optuna["trials"])
+    scores_id = get_n_best_trials(study)
+    id_trial = scores_id[-1][0]
     npz = f"{opt.name}/multiple/optuna_{id_trial}.npz"
     weights = f"{opt.name}/multiple/optuna_{id_trial}.pth"
     model_hp.device = "cuda" if model_hp.gpu else "cpu"
     NN = load_model(model_hp, weights, npz, data, index, encoding)
-    # time_preds = plot(data, NN, opt.name, 0, True)  # 0 is trial
-    # metrics = evaluation(NN, opt.name, encoding)
-    # metrics_test = evaluation_test(NN, data_test, opt.name, encoding)
+    time_preds = plot(data, NN, opt.name, 0, True)  # 0 is trial
+    metrics = evaluation(NN, opt.name, encoding)
+    metrics_test = evaluation_test(NN, data_test, opt.name, encoding)
     change_data, ts_pts, ts_gt = load_eval_data_faster(keyword)
-    # evaluation_with_change(NN, change_data, opt.name, encoding)
+    evaluation_with_change(NN, change_data, opt.name, encoding)
     evaluation_timeseries(NN, ts_pts, ts_gt, opt.name, encoding)
-    # import pdb; pdb.set_trace()
-    # save_results(metrics + metrics_test, opt.name)
-    # plot_NN(NN, model_hp, opt.name)
+    import pdb; pdb.set_trace()
+    save_results(metrics + metrics_test, opt.name)
+    plot_NN(NN, model_hp, opt.name)
 
 
 if __name__ == "__main__":
