@@ -542,7 +542,13 @@ def sample_hp(hp, trial):
                     1e-2,
                     log=True,
                 )
-    hp.model["scale"] = trial.suggest_float("scale", 1e-2, 5e-1, log=True)
+    # hp.model["scale"] = trial.suggest_float("scale", 1e-2, 5e-1, log=True)
+    hp.losses["spatial_grad"]["lambda"] = trial.suggest_float(
+                    "lambda",
+                    1e-2,
+                    10,
+                    log=True,
+                )
   
     return hp
 

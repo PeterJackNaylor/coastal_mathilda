@@ -13,7 +13,7 @@ model:
   name: RFF #or RFF/SIREN/WIRES/MFN
   hidden_nlayers: 5
   hidden_width: 256
-  scale: 0.1 #for SIREN: 30
+  scale: 5 #for SIREN: 30
   skip: False
   ## RFF specific
   mapping_size: 256
@@ -55,20 +55,11 @@ losses:
   spatial_grad:
     report: True
     log: True
-    lambda: 1
-    temporal_causality: False
+    lambda: 1000000
+    temporal_causality: True
     bs: 8192 # 8192 #16384 # 65536 #32768 # 8192 # √ # powers of 2 only
     method: spatial_gradient
     loss_balancing: False #wether to be included in loss balancing
-  # temporal_grad:
-  #   report: True
-  #   log: True
-  #   lambda: 1
-  #   temporal_causality: False
-  #   bs: 8192 # 8192 #16384 # 65536 #32768 # 8192 # √ # powers of 2 only
-  #   method: temporal_gradient
-  #   loss_balancing: False #wether to be included in loss balancing
-
 
 
 

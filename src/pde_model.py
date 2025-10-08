@@ -46,5 +46,5 @@ class Surface(pinns.DensityEstimator):
             M=M,
             dtype=self.dtype,
         )
-        grad = spatial_grad(self.model, t, Lat, Lon)
+        grad = spatial_temporal_grad(self.model, t, Lat, Lon)
         return grad
