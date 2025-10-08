@@ -1,6 +1,20 @@
 import pinns
 import torch 
 
+def spatial_temporal_grad(model, t, Lat, Lon):
+    torch.set_grad_enabled(True)
+    Lat.requires_grad_(True)
+    Lon.requires_grad_(True)
+    t.requires_grad_(True)
+    u = model(t, Lat, Lon)
+    du_dLat = pinns.gradient(u, Lat)
+    du_dLon = pinns.gradient(u, Lon)
+    du_dt = pinns.gradient(u, t)
+    return du_dLat, du_dLon, du_dt
+
+
+
+
 class Surface(pinns.DensityEstimator):
     def autocasting(self):
         if self.device == "cpu":
@@ -17,7 +31,8 @@ class Surface(pinns.DensityEstimator):
         self.dtype = dtype
 
     def spatial_gradient(self, z, z_hat, weight):
-        x = pinns.gen_uniform(self.hp.losses["spatial_grad"]["bs"], self.device)
+        Lat = pinns.gen_uniform(self.hp.losses["spatial_grad"]["bs"], self.device)
+        Lon = pinns.gen_uniform(self.hp.losses["spatial_grad"]["bs"], self.device)
 
         M = self.M if hasattr(self, "M") else None
         temporal_scheme = self.hp.losses["spatial_grad"]["temporal_causality"]
@@ -25,11 +40,11 @@ class Surface(pinns.DensityEstimator):
         t = pinns.gen_uniform(
             self.hp.losses["spatial_grad"]["bs"],
             self.device,
-            start=0,
+            start=-1,
             end=1,
             temporal_scheme=temporal_scheme,
             M=M,
             dtype=self.dtype,
         )
-        grad = spatial_grad(self.model, x, t)
+        grad = spatial_grad(self.model, t, Lat, Lon)
         return grad
