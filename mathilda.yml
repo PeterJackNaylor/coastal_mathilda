@@ -52,14 +52,23 @@ losses:
   #   temporal_causality: True
   #   bs: 8192 # 8192 # 16384 # 32768 # powers of 2 only
   #   method: periodicity
-  # spatial_grad:
-  #   report: True
-  #   log: True
-  #   lambda: 1000000
-  #   temporal_causality: True
-  #   bs: 8192 # 8192 #16384 # 65536 #32768 # 8192 # √ # powers of 2 only
-  #   method: spatial_gradient
-  #   loss_balancing: False #wether to be included in loss balancing
+  spatial_grad:
+    report: True
+    log: True
+    lambda: 1
+    temporal_causality: False
+    bs: 8192 # 8192 #16384 # 65536 #32768 # 8192 # √ # powers of 2 only
+    method: spatial_gradient
+    loss_balancing: False #wether to be included in loss balancing
+  temporal_grad:
+    report: True
+    log: True
+    lambda: 1
+    temporal_causality: False
+    bs: 8192 # 8192 #16384 # 65536 #32768 # 8192 # √ # powers of 2 only
+    method: temporal_gradient
+    loss_balancing: False #wether to be included in loss balancing
+
 
 
 
