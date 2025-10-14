@@ -415,25 +415,30 @@ def evaluation_test(model, data, name, encoding):
     rmse_test = rmse(torch.tensor(test_targets).cuda(), test_pred)
 
     test_pred = test_pred.flatten().cpu().float().numpy()
+    true_xyz = data[:, [-3,-2,-1]]
     pred_xyz = np.concatenate((data[:,[-3,-2]], test_pred.reshape((-1,1))), axis=1)
     scale = 1.0
-    rough_gt, dzdx_true, dzdy_true = get_roughness(data[:, [-3,-2,-1]], data[:, [-3,-2,-1]], scale)
-    rough_pred, dzdx_pred, dzdy_pred = get_roughness(pred_xyz[:], pred_xyz, scale) #::10
-    plot_feature(rough_gt, rough_pred, data_txy, model.data.nv_samples, scale, suffix="test", name=name, feat_name="Roughness")
-    plot_feature(dzdx_true, dzdx_pred, data_txy, model.data.nv_samples, scale, suffix="test", name=name, feat_name="DzDx")
-    plot_feature(dzdy_true, dzdy_pred, data_txy, model.data.nv_samples, scale, suffix="test", name=name, feat_name="DzDy")
+    idx_2 = downsample_pointcloud(true_xyz, max_points=100000)
+    idx_2pred = downsample_pointcloud(pred_xyz, max_points=100000)
+    corepoints = true_xyz[idx_2]
+    corepoints_pred = pred_xyz[idx_2pred]
+    rough_gt, dzdx_true, dzdy_true = get_roughness(corepoints, true_xyz, scale)
+    rough_pred, dzdx_pred, dzdy_pred = get_roughness(corepoints_pred, pred_xyz, scale) #::10
+    plot_feature(rough_gt, rough_pred, data_txy[idx_2], model.data.nv_samples, scale, suffix="test", name=name, feat_name="Roughness", down=False)
+    plot_feature(dzdx_true, dzdx_pred, data_txy[idx_2], model.data.nv_samples, scale, suffix="test", name=name, feat_name="DzDx", down=False)
+    plot_feature(dzdy_true, dzdy_pred, data_txy[idx_2], model.data.nv_samples, scale, suffix="test", name=name, feat_name="DzDy", down=False)
     scale = 3.0
-    rough_gt, dzdx_true, dzdy_true = get_roughness(data[:, [-3,-2,-1]], data[:, [-3,-2,-1]], scale)
-    rough_pred, dzdx_pred, dzdy_pred = get_roughness(pred_xyz[:], pred_xyz, scale) #::10
-    plot_feature(rough_gt, rough_pred, data_txy, model.data.nv_samples, scale, suffix="test", name=name, feat_name="Roughness")
-    plot_feature(dzdx_true, dzdx_pred, data_txy, model.data.nv_samples, scale, suffix="test", name=name, feat_name="DzDx")
-    plot_feature(dzdy_true, dzdy_pred, data_txy, model.data.nv_samples, scale, suffix="test", name=name, feat_name="DzDy")
+    rough_gt, dzdx_true, dzdy_true = get_roughness(corepoints, true_xyz, scale)
+    rough_pred, dzdx_pred, dzdy_pred = get_roughness(corepoints_pred, pred_xyz, scale) #::10
+    plot_feature(rough_gt, rough_pred, data_txy[idx_2], model.data.nv_samples, scale, suffix="test", name=name, feat_name="Roughness", down=False)
+    plot_feature(dzdx_true, dzdx_pred, data_txy[idx_2], model.data.nv_samples, scale, suffix="test", name=name, feat_name="DzDx", down=False)
+    plot_feature(dzdy_true, dzdy_pred, data_txy[idx_2], model.data.nv_samples, scale, suffix="test", name=name, feat_name="DzDy", down=False)
     scale = 5.0
-    rough_gt, dzdx_true, dzdy_true = get_roughness(data[:, [-3,-2,-1]], data[:, [-3,-2,-1]], scale)
-    rough_pred, dzdx_pred, dzdy_pred = get_roughness(pred_xyz[:], pred_xyz, scale) #::10
-    plot_feature(rough_gt, rough_pred, data_txy, model.data.nv_samples, scale, suffix="test", name=name, feat_name="Roughness")
-    plot_feature(dzdx_true, dzdx_pred, data_txy, model.data.nv_samples, scale, suffix="test", name=name, feat_name="DzDx")
-    plot_feature(dzdy_true, dzdy_pred, data_txy, model.data.nv_samples, scale, suffix="test", name=name, feat_name="DzDy")
+    rough_gt, dzdx_true, dzdy_true = get_roughness(corepoints, true_xyz, scale)
+    rough_pred, dzdx_pred, dzdy_pred = get_roughness(corepoints_pred, pred_xyz, scale) #::10
+    plot_feature(rough_gt, rough_pred, data_txy[idx_2], model.data.nv_samples, scale, suffix="test", name=name, feat_name="Roughness", down=False)
+    plot_feature(dzdx_true, dzdx_pred, data_txy[idx_2], model.data.nv_samples, scale, suffix="test", name=name, feat_name="DzDx", down=False)
+    plot_feature(dzdy_true, dzdy_pred, data_txy[idx_2], model.data.nv_samples, scale, suffix="test", name=name, feat_name="DzDy", down=False)
     return [mae_test, rmse_test]
 
 
@@ -490,7 +495,6 @@ def evaluation_timeseries(model, data, ts_gt, name, encoding, n_plots=10, suffix
     if not encoding:
         data_txy = np.concatenate((data[:, [0,-3,-2]].copy(), super_res_txyz[:,[0,-3,-2]].copy()),axis=0)
         raw_txy = data_txy.copy()
-        print(data.shape, data_txy.shape)
     else:
         data_txy = np.concatenate((data[:, 1:-1].copy(), super_res_txyz[:,1:-1].copy()), axis=0)
         raw_txy = data_txy.copy()
@@ -536,15 +540,25 @@ def evaluation_timeseries(model, data, ts_gt, name, encoding, n_plots=10, suffix
 
 
 def sample_hp(hp, trial):
+    # hp.model["epochs"] = trial.suggest_int("epochs", 50, 400, log=True)
+    hp.model["epochs"] = trial.suggest_categorical('epochs', [25,50,75,100,125,150,175,200,225,250,275,300,325,350,375,400])
+    hp.model["mapping_size"] = trial.suggest_categorical('mapping_size', [128,256,512])
     hp.lr = trial.suggest_float(
                     "lr",
                     1e-4,
                     1e-2,
                     log=True,
                 )
-    # hp.model["scale"] = trial.suggest_float("scale", 1e-2, 5e-1, log=True)
-    hp.losses["spatial_grad"]["lambda"] = trial.suggest_float(
-                    "lambda",
+    hp.model["scale"] = trial.suggest_float("scale", 1e-2, 5, log=True)
+    hp.model["scale_time"] = trial.suggest_float("scale_time", 1e-2, 5, log=True)
+    hp.losses["gradient_lat"]["lambda"] = trial.suggest_float(
+                    "lambda_lat",
+                    1e-2,
+                    10,
+                    log=True,
+                )
+    hp.losses["gradient_lon"]["lambda"] = trial.suggest_float(
+                    "lambda_lon",
                     1e-2,
                     10,
                     log=True,
@@ -645,6 +659,25 @@ def load_model(model_hp, weights, npz_path, data, index, encoding):
     NN = Surface(train, test, model, model_hp, model_hp.gpu)
     return NN
 
+
+def plot_optuna(study, name):
+    import kaleido
+    try:
+        os.mkdir(f"{name}/optuna")
+        # os.mkdir("optuna")
+    except:
+        pass
+
+    fig = optuna.visualization.plot_intermediate_values(study)
+    fig.write_image(f"{name}/optuna/{name}" + "_inter_optuna.png")
+
+    fig = optuna.visualization.plot_parallel_coordinate(study)
+    fig.write_image(f"{name}/optuna/{name}" + "_searchplane.png")
+
+    fig = optuna.visualization.plot_param_importances(study)
+    fig.write_image(f"{name}/optuna/{name}" + "_important_params.png")
+
+
 def main():
     opt = parser_f()
 
@@ -674,9 +707,15 @@ def main():
         pruner=optuna.pruners.HyperbandPruner(),
     )
     study.optimize(objective, n_trials=model_hp.optuna["trials"])
+    best_trial = study.best_trial
+    print(best_trial)
+    best_params = best_trial.params
+    pd.DataFrame([{**best_params, 'value': best_trial.value}]). to_csv(
+        f"{opt.name}__best_params.csv"
+    )
     scores_id = get_n_best_trials(study)
     id_trial = scores_id[-1][0]
-    print("\nBest trial is trial ", id_trial)
+    print("Best trial is trial ", id_trial)
     npz = f"{opt.name}/multiple/optuna_{id_trial}.npz"
     weights = f"{opt.name}/multiple/optuna_{id_trial}.pth"
     model_hp.device = "cuda" if model_hp.gpu else "cpu"
@@ -689,8 +728,46 @@ def main():
     evaluation_timeseries(NN, ts_pts, ts_gt, opt.name, encoding)
     # import pdb; pdb.set_trace()
     save_results(metrics + metrics_test, opt.name)
+    # plot_NN(NN, model_hp, opt.name)
+    pd.DataFrame(scores_id, columns=["number", "value"]).to_csv(
+        f"{opt.name}__trial_scores.csv"
+    )
+    plot_optuna(study, opt.name)
+
+
+def main_sr():
+    opt = parser_f()
+
+    keyword = opt.keyword
+    if "encoding" in keyword:
+        encoding = True
+    else:
+        encoding = False
+    data, index = load_data_faster(keyword)
+
+    data_train, data_test, idx = split_test(data, index)
+    model_hp = setup_hp(
+        opt.yaml_file,
+        data_train,
+        opt.name,
+    )
+    
+    NN, model_hp = single_run(opt.yaml_file, data, index, opt.name, encoding)
     plot_NN(NN, model_hp, opt.name)
+    npz = f"{opt.name}/{opt.name}.npz"
+    weights = f"{opt.name}/{opt.name}.pth"
+    model_hp.device = "cuda" if model_hp.gpu else "cpu"
+    NN = load_model(model_hp, weights, npz, data, index, encoding)
+    metrics = evaluation(NN, opt.name, encoding)
+    metrics_test = evaluation_test(NN, data_test, opt.name, encoding)
+    change_data, ts_pts, ts_gt = load_eval_data_faster(keyword)
+    evaluation_with_change(NN, change_data, opt.name, encoding)
+    evaluation_timeseries(NN, ts_pts, ts_gt, opt.name, encoding)
+    # import pdb; pdb.set_trace()
+    save_results(metrics + metrics_test, opt.name)
+
 
 
 if __name__ == "__main__":
     main()
+    # main_sr()

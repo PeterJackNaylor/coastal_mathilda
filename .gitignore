@@ -197,3 +197,4 @@ pyrightconfig.json
 *.pth
 *.npz
 *.csv
+*.yml

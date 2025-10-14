@@ -109,7 +109,7 @@ def plot_pc(y_gt, y_pred, input_data, nv_samples, suffix="", name="outputs"):
         plt.close()
 
 
-def plot_feature(rough_gt, rough_pred, input_data, nv_samples, scale, percentile=5, suffix="", name="outputs", feat_name=""):
+def plot_feature(rough_gt, rough_pred, input_data, nv_samples, scale, percentile=5, suffix="", name="outputs", feat_name="", down=True):
     input_data_n = input_data.copy()
     num = len(nv_samples)
     for i in range(num):
@@ -121,10 +121,14 @@ def plot_feature(rough_gt, rough_pred, input_data, nv_samples, scale, percentile
         y_pred_t = rough_pred[idx]
         y_gt_t = rough_gt[idx]
         
-        idx_2 = downsample_pointcloud(input_data_t, max_points=100000)
-        input_data_t = input_data_t[idx_2, :]
-        y_pred_t = y_pred_t[idx_2].squeeze()
-        y_gt_t = y_gt_t[idx_2].squeeze()
+        if down:
+            idx_2 = downsample_pointcloud(input_data_t, max_points=100000)
+            input_data_t = input_data_t[idx_2, :]
+            y_pred_t = y_pred_t[idx_2].squeeze()
+            y_gt_t = y_gt_t[idx_2].squeeze()
+        else:
+            y_pred_t = y_pred_t[:].squeeze()
+            y_gt_t = y_gt_t[:].squeeze()
 
         fig, axes = plt.subplots(1, 3, figsize=(10, 30))
         low, high = np.percentile(y_pred_t[~np.isnan(y_pred_t)], [percentile, 100-percentile])
