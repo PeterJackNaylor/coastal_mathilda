@@ -62,12 +62,16 @@ def gt_elevation_ts(data_path, save_path, corepoints_path, name, make_analysis =
     distances = analysis.distances
     distances_epoch = [d[1] for d in distances]
     valid_id = np.where(np.any(np.isnan(distances), axis=1) == False)[0]
-    cp_idx_sel = np.random.choice(valid_id, 1)[0]
-    print(cp_idx_sel)
+    # print(valid_id)
+    if valid_id.shape[0] >0:
+        cp_idx_sel = np.random.choice(valid_id, 1)[0]
+    else:
+        cp_idx_sel = 1000
+    # print(cp_idx_sel)
     coord_sel = analysis.corepoints.cloud[cp_idx_sel]
     timeseries_sel = distances[cp_idx_sel]
     # print(np.where(np.any(np.isnan(distances), axis=1) == False)[0])
-    print(timeseries_sel)
+    # print(timeseries_sel)
     timestamps = [t + analysis.reference_epoch.timestamp for t in analysis.timedeltas]
     # d = ax1.scatter(corepoints[:,0], corepoints[:,1], corepoints[:,2], c=distances_epoch[:], cmap='viridis', s=1, zorder=1)
     d = ax1.scatter(corepoints[:,1], corepoints[:,0], c=distances_epoch[:], cmap='viridis', s=1, zorder=1)
@@ -157,7 +161,7 @@ def prepare_ts_for_model(save_path, name):
     # valid_id = np.where(np.any(np.isnan(distances), axis=1) == False)[0]
     # pts = pts[valid_id]
     encod, t_days = encode_time_info(Time(timestamps))
-    print(encod.shape, t_days.shape, pts.shape)#, valid_id.shape)
+    # print(encod.shape, t_days.shape, pts.shape)#, valid_id.shape)
     all_coords = np.empty((0,3), dtype=np.float32)
     all_days_el = np.empty((0), dtype=np.float32)
     all_encodings = np.empty((0,10), dtype=np.float32)
@@ -177,16 +181,66 @@ def prepare_ts_for_model(save_path, name):
     np.save(f'{save_path}/{name}_timeseries.npy', txyz_eval)
 
 
-def main():
-    # data_path = '/home/mletard/compute/4dinr/data'
-    # core_path = '/Users/mletard/Desktop/seasonal_grid_25cm.las'
-    save_path = '/Users/mletard/Desktop'
-    data_path = '/Users/mletard/Desktop/seasonal_beach'
-    save_path = '/home/mletard/compute/4dinr/data'
-    # pair_m3c2(data_path, save_path, "seasonal_beach")
-    # gt_elevation_ts(data_path, save_path, core_path, "seasonal_beach", True)
-    prepare_ts_for_model(save_path, "seasonal_beach")
+def aggregate_st_analyses(path, name):
+    print(name.split("beach"))
+    sta_list = []
+    files = os.listdir(path)
+    for ff in files:
+        if name in ff and ".zip" in ff:
+            sta_list.append(os.path.join(path, ff))
+    analysis = py4dgeo.SpatiotemporalAnalysis(sta_list[0])
+    corepts = analysis.corepoints.cloud
+    z_all = np.empty((corepts.shape[0],0))
+    mean_z = np.empty((corepts.shape[0],0))
+    std_z = np.empty((corepts.shape[0],0))
+    time_mean = np.empty((0))
+    time_all = np.empty((0))
+    for f in sta_list:
+        analysis = py4dgeo.SpatiotemporalAnalysis(f)
+        timestamps = np.array((analysis.timedeltas)) + analysis.reference_epoch.timestamp
+        time_mean = np.append(time_mean, np.array(([Time(timestamps).mean().to_value("isot")])), axis=0)
+        time_all = np.append(time_all, timestamps, axis=0)
+        mean_z = np.append(mean_z, np.mean(analysis.distances, axis = 1).reshape((-1,1)), axis=1)
+        std_z = np.append(std_z, np.std(analysis.distances, axis = 1).reshape((-1,1)), axis=1)
+        z_all = np.append(z_all, analysis.distances, axis=1)
+ 
+    xy_meanz = np.concatenate((corepts[:,[0,1]], mean_z), axis=1)
+    xy_stdz = np.concatenate((corepts[:,[0,1]], std_z), axis=1)
+    xy_allz = np.concatenate((corepts[:,[0,1]], z_all), axis=1)
+    corepts = analysis.corepoints.cloud
+    save_name = name.split("beach")[0]
+    np.save(f"{path}/{save_name}beach_meanZ", xy_meanz)
+    np.save(f"{path}/{save_name}beach_stdZ", xy_stdz)
+    np.save(f"{path}/{save_name}beach_allZ", xy_allz)
+    np.save(f"{path}/{save_name}beach_allT", time_all)
+    np.save(f"{path}/{save_name}beach_meanT", time_mean)
 
+
+def main():
+    # # data_path = '/home/mletard/compute/4dinr/data'
+
+    tag = "monthly"
+    name = tag+"_beach"
+
+    # core_path = '/Users/mletard/Desktop/change_analysis_for_INR/'+tag+'_grid_25cm.las'
+    # save_path = '/Users/mletard/Desktop'
+    # data_path = '/Users/mletard/Desktop/'+name
+    # data_path = '/Users/mletard/Desktop/mean_analysis_seasonal'
+    # # save_path = '/home/mletard/compute/4dinr/data'
+    # # pair_m3c2(data_path, save_path, "seasonal_beach")
+    # gt_elevation_ts(data_path, save_path, core_path, name, True)
+    # prepare_ts_for_model(save_path, name)
+    # pair_m3c2(data_path, save_path, name)
+    # for date in range(1,32,1):
+    #     print("date"+str(date))
+    #     core_path = '/Users/mletard/Desktop/change_analysis_for_INR/'+tag+'_grid_25cm.las'
+    #     save_path = '/Users/mletard/Desktop'
+    #     data_path = '/Users/mletard/Desktop/mean_analysis_'+tag+'/date'+str(date)
+    #     gt_elevation_ts(data_path, save_path, core_path, tag+"_beach_mean_date"+str(date), True)
+    aggregate_st_analyses('/Users/mletard/Desktop', tag+"_beach_mean_date")
+    # analysis = py4dgeo.SpatiotemporalAnalysis('/Users/mletard/Desktop/'+name+'.zip')
+    # corepts = analysis.corepoints.cloud
+    # print(corepts.shape[0])
 
 if __name__ == "__main__":
     main()
