@@ -1,6 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from single_run import *
+import pandas as pd
 
 
 def test_histo(ztrue, zpred, name, suffix=''):
@@ -225,7 +226,6 @@ def plot_timeseries(elevations_true, ts_pred, tdays_pred, timestamps_true, corep
     idx_2 = downsample_pointcloud(corepoints, max_points=100000)
     corepoints = corepoints[idx_2]
     distances_epoch = distances_epoch[idx_2]
-    
     d = ax1.scatter(corepoints[:,1], corepoints[:,0], c=distances_epoch[:], cmap='viridis', s=1, zorder=1)
     plt.colorbar(d, format=('%.2f'), label='Elevation [m]', ax=ax1, shrink=.5, pad=.15, orientation='horizontal')
     ax1.scatter(coords[1], coords[0], c='white', s=300, zorder=2, label='Selected location', marker='*',facecolors='white', edgecolors='black', linewidths=1)
@@ -236,7 +236,7 @@ def plot_timeseries(elevations_true, ts_pred, tdays_pred, timestamps_true, corep
     ax1.set_aspect('equal')
     ax1.set_title('Elevation at %s' % (timestamps_true[0]))
 
-    ax2.plot(timestamps_true[~np.isnan(timeseries_sel)], timeseries_sel[~np.isnan(timeseries_sel)], color='gray', linestyle='-', zorder=1)
+    ax2.plot(timestamps_true[~np.isnan(timeseries_sel)], timeseries_sel[~np.isnan(timeseries_sel)], color='lightgray', alpha=0.3, linestyle='-', zorder=1)
     pred_order = np.argsort(tdays_pred)
     tdays_pred = np.array((tdays_pred))
     ax2.plot(tdays_pred[pred_order], ts_pred[pred_order], color='gray', linestyle='-', zorder=1)
@@ -247,6 +247,55 @@ def plot_timeseries(elevations_true, ts_pred, tdays_pred, timestamps_true, corep
     ax2.set_ylabel('Elevation [m]')
     ax2.set_title('Time series at selected location')
     ax2.tick_params(axis='x', rotation=45)
+    plt.tight_layout()
+    plt.savefig(f"{name}/pc_{suffix}/{folder}/time_series_plot_{suffix}_{str(cp_idx_sel)}.png")
+
+
+def plot_timeseries_uncert(elevations_true, ts_pred, zmean, zstd, tdays_pred, timestamps_true, tmean, cp_idx_sel, name, folder, suffix=""):
+    try:
+        os.mkdir(f"{name}/pc_{suffix}/{folder}")
+    except:
+        pass
+    
+    plt.rcParams.update({
+        'font.size': 22,          # base font size
+        'axes.titlesize': 20,     # title font size
+        'axes.labelsize': 18,     # x/y labels
+        'lines.linewidth': 3,     # line width
+        'lines.markersize': 2,   # default marker size
+        'xtick.labelsize': 14,
+        'ytick.labelsize': 14,
+        'legend.fontsize': 16
+    })
+    # axes = plt.figure(figsize=(20,7))
+    fig, axes = plt.subplots(figsize=(10, 5))
+    zmean = zmean[...,2:]
+    zstd = zstd[..., 2:]
+    print(tmean.shape, zmean[cp_idx_sel].shape, zstd[cp_idx_sel].shape, (zmean[cp_idx_sel]-zstd[cp_idx_sel]).shape)
+    plt.fill_between(
+        pd.to_datetime(tmean),
+        zmean[cp_idx_sel] - zstd[cp_idx_sel],
+        zmean[cp_idx_sel] + zstd[cp_idx_sel],
+        color='skyblue',
+        alpha=0.3,
+        label='±1σ'
+    )
+
+    print(zmean[cp_idx_sel] + zstd[cp_idx_sel])
+
+    timeseries_sel = elevations_true[cp_idx_sel]
+
+    # ax2.plot(timestamps_true[~np.isnan(timeseries_sel)], timeseries_sel[~np.isnan(timeseries_sel)], color='gray', linestyle='-', zorder=1)
+    pred_order = np.argsort(tdays_pred)
+    tdays_pred = np.array((tdays_pred))
+    axes.plot(tdays_pred[pred_order], ts_pred[pred_order], color='gray', linestyle='-', zorder=1)
+    axes.scatter(timestamps_true[~np.isnan(timeseries_sel)], timeseries_sel[~np.isnan(timeseries_sel)], c=timeseries_sel[~np.isnan(timeseries_sel)], s=150, cmap='viridis', zorder=2, label='Measured')
+    axes.scatter(tdays_pred[pred_order], ts_pred[pred_order], c=ts_pred[pred_order], marker="x", s=150, cmap='viridis', zorder=2, label='Predicted')
+    axes.legend()
+    axes.set_xlabel('Date')
+    axes.set_ylabel('Elevation [m]')
+    axes.set_title('Time series at selected location')
+    axes.tick_params(axis='x', rotation=45)
     plt.tight_layout()
     plt.savefig(f"{name}/pc_{suffix}/{folder}/time_series_plot_{suffix}_{str(cp_idx_sel)}.png")
 

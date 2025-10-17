@@ -16,7 +16,7 @@ import matplotlib.cm as cm
 # from utils import grid_on_polygon, predict, inverse_time, load_geojson
 from pinns.models import INR
 from datetime import datetime
-from dataloader import return_dataset
+from dataloader import return_dataset, load_data, load_data_faster, load_eval_data_faster
 from pde_model import Surface
 from datetime import datetime, timedelta
 from tqdm import tqdm 
@@ -27,6 +27,7 @@ import py4dgeo
 from pc_utils import *
 from plot_utils import *
 from temp_encoding import *
+from evaluations import *
 
 
 def predict(array, model, attribute="model"):
@@ -57,7 +58,6 @@ def predict(array, model, attribute="model"):
 
 
 def setup_uniform_grid(pc, step):
-
     xmin, ymin, xmax, ymax = pc[:, 1].min(), pc[:, 2].min(), pc[:, 1].max(), pc[:, 2].max()
     xx_grid = np.arange(xmin, xmax, step)
     yy_grid = np.arange(ymin, ymax, step * 2)
@@ -145,12 +145,9 @@ def rmse(target, prediction):
 
 def downsample_pointcloud(data, max_points=1000000):
     n_points = data.shape[0]
-    
     if n_points <= max_points:
         return np.arange(n_points)
-    
     indices = np.random.choice(n_points, max_points, replace=False)
-    
     return indices
 
 
@@ -189,7 +186,7 @@ def evaluation(model, name, encoding):
     return [mae_train, mae_test, mae_all, rmse_train, rmse_test, rmse_all]
 
 
-def save_results(variables, name):
+def save_results(variables, name, suffix=""):
     results = pd.DataFrame()
     # variables = [t_var, mae_train, mae_test, mae_all, rmse_train, rmse_test, rmse_all]
     names = [
@@ -204,7 +201,7 @@ def save_results(variables, name):
     ]
     for v, n in zip(variables, names):
         results.loc[name.split("/")[-1], n] = v
-    results.to_csv(f"{name}/results.csv")
+    results.to_csv(f"{name}/results{suffix}.csv")
 
 
 def plot_NN(NN, model_hp, name):
@@ -268,121 +265,21 @@ def plot_NN(NN, model_hp, name):
 def days_to_time_string(days, reference_date="190101_000000"):
     # Parse the reference date
     ref_dt = datetime.strptime(reference_date, '%y%m%d_%H%M%S')
-    
     # Calculate the target datetime by adding the days
     target_dt = ref_dt + timedelta(days=int(days))
-    
     # Format the result as a string
     return target_dt.strftime('%y%m%d_%H%M%S')
+
 
 def time_string_to_days(time_str, reference_date="190101_000000"):
     # Parse the input time string
     dt = datetime.strptime(time_str, '%y%m%d_%H%M%S')
-    
     # Parse the reference date
     ref_dt = datetime.strptime(reference_date, '%y%m%d_%H%M%S')
-    
     # Calculate the time difference in days
     time_difference = dt - ref_dt
     days = time_difference.total_seconds() / (24 * 3600)  # Convert seconds to days
-    
     return days
-
-def load_data(filename):
-    with h5py.File(filename, "r") as f:
-        time_str = 'dates_str'
-        x_str = "x"
-        y_str = "y"
-        z_str = "z"
-        time = list(f[time_str])
-        time = [time_string_to_days(t) for t in time]
-        x = list(f[x_str])
-        y = list(f[y_str])
-        z = list(f[z_str])
-        data = np.column_stack((time, x, y, z))
-        import pdb; pdb.set_trace()
-    return data
-
-def load_data_faster(opt = "default", path="/home/mletard/compute/4dinr/data"):
-    if opt == 'default':
-        filename = "data/data_simu.npy"
-        return np.load(filename), None
-    elif opt == "seasonal_beach_temporal":
-        filename = path+"/seasonal_beach_temporal.npy"
-        filename_index = path+"/seasonal_beach_temporal_split.npy"
-    elif opt == "seasonal_beach_spatial":
-        filename = path+"/seasonal_beach_spatial.npy"
-        filename_index = path+"/seasonal_beach_spatial_split.npy"
-    elif opt == "seasonal_beach_temporal_encoding":
-        filename = path+"/seasonal_beach_temporal_encoding.npy"
-        filename_index = path+"/seasonal_beach_temporal_encoding_split.npy"
-    elif opt == "seasonal_beach_spatial_encoding":
-        filename = path+"/seasonal_beach_spatial_encoding.npy"
-        filename_index = path+"/seasonal_beach_spatial_encoding_split.npy"
-    elif opt == "monthly_beach_temporal":
-        filename = path+"/monthly_beach_temporal.npy"
-        filename_index = path+"/monthly_beach_temporal_split.npy"
-    elif opt == "monthly_beach_spatial":
-        filename = path+"/monthly_beach_spatial.npy"
-        filename_index = path+"/monthly_beach_spatial_split.npy"
-    elif opt == "monthly_beach_temporal_encoding":
-        filename = path+"/monthly_beach_temporal_encoding.npy"
-        filename_index = path+"/monthly_beach_temporal_encoding_split.npy"
-    elif opt == "monthly_beach_spatial_encoding":
-        filename = path+"/monthly_beach_spatial_encoding.npy"
-        filename_index = path+"/monthly_beach_spatial_encoding_split.npy"
-    elif opt == "weekly_beach_temporal":
-        filename = path+"/weekly_beach_temporal.npy"
-        filename_index = path+"/weekly_beach_temporal_split.npy"
-    elif opt == "weekly_beach_spatial":
-        filename = path+"/weekly_beach_spatial.npy"
-        filename_index = path+"/weekly_beach_spatial_split.npy"
-    elif opt == "weekly_beach_temporal_encoding":
-        filename = path+"/weekly_beach_temporal_encoding.npy"
-        filename_index = path+"/weekly_beach_temporal_encoding_split.npy"
-    elif opt == "weekly_beach_spatial_encoding":
-        filename = path+"/weekly_beach_spatial_encoding.npy"
-        filename_index = path+"/weekly_beach_spatial_encoding_split.npy"
-    elif opt == "daily_beach_temporal":
-        filename = path+"/daily_beach_temporal.npy"
-        filename_index = path+"/daily_beach_temporal_split.npy"
-    elif opt == "daily_beach_spatial":
-        filename = path+"/daily_beach_spatial.npy"
-        filename_index = path+"/daily_beach_spatial_split.npy"
-    elif opt == "daily_beach_temporal_encoding":
-        filename = path+"/daily_beach_temporal_encoding.npy"
-        filename_index = path+"/daily_beach_temporal_encoding_split.npy"
-    elif opt == "daily_beach_spatial_encoding":
-        filename = path+"/daily_beach_spatial_encoding.npy"
-        filename_index = path+"/daily_beach_spatial_encoding_split.npy"
-    elif opt == "final_map":
-        filename = path+"map.npy"
-        filename_index = path+"map_split.npy"
-    elif opt == "time_series":
-        filename = path+"timeseries.npy"
-        filename_index = path+"timeseries_split.npy"
-
-    return np.load(filename), np.load(filename_index)
-
-def load_eval_data_faster(opt, path="/home/mletard/compute/4dinr/data"):
-    if "seasonal_beach" in opt:
-        change_data = path+"/bitemporal_change_seasonal_beach.npy"
-        time_series = path+"/seasonal_beach_timeseries.npy"
-        time_series_gt = py4dgeo.SpatiotemporalAnalysis(path+"/seasonal_beach.zip")
-    elif "monthly_beach" in opt:
-        change_data = path+"/bitemporal_change_monthly_beach.npy"
-        time_series = path+"/monthly_beach_timeseries.npy"
-        time_series_gt = py4dgeo.SpatiotemporalAnalysis(path+"/monthly_beach.zip")
-    elif "weekly_beach" in opt:
-        change_data = path+"/bitemporal_change_weekly_beach.npy"
-        time_series = path+"/weekly_beach_timeseries.npy"
-        time_series_gt = py4dgeo.SpatiotemporalAnalysis(path+"/weekly_beach.zip")
-    elif "daily_beach" in opt:
-        change_data = path+"/bitemporal_change_daily_beach.npy"
-        time_series = path+"/daily_beach_timeseries.npy"
-        time_series_gt = py4dgeo.SpatiotemporalAnalysis(path+"/daily_beach.zip")
-
-    return np.load(change_data), np.load(time_series), time_series_gt
 
 
 def split_test(data, index):
@@ -392,151 +289,6 @@ def split_test(data, index):
     data_test = data[idx, :]
     data_train = data[~idx, :]
     return data_train, data_test, index[~idx]
-
-def evaluation_test(model, data, name, encoding):
-    if not encoding:
-        data_txy = data[:, [0,-3,-2]].copy()
-        test_targets = data[:, -1:]
-    else:
-        data_txy = data[:, 1:-1].copy()
-        test_targets = data[:, -1:]
-    
-    model.test_set.normalize(data_txy, model.test_set.nv_samples, True)
-    z_pred = predict(torch.tensor(data_txy).cuda().float(), model)
-    z_nrm = model.data.nv_targets[0]
-    test_pred = z_pred * z_nrm[1] + z_nrm[0]
-    mae_test = mae(torch.tensor(test_targets).cuda(), test_pred)
-    plot_pc(test_targets, 
-                test_pred.flatten().cpu().float().numpy(), 
-                data_txy, model.data.nv_samples, suffix="test", name=name)
-    test_histo(test_targets, 
-                test_pred.flatten().cpu().float().numpy(), name, suffix="test")
-    # RMSE
-    rmse_test = rmse(torch.tensor(test_targets).cuda(), test_pred)
-
-    test_pred = test_pred.flatten().cpu().float().numpy()
-    true_xyz = data[:, [-3,-2,-1]]
-    pred_xyz = np.concatenate((data[:,[-3,-2]], test_pred.reshape((-1,1))), axis=1)
-    scale = 1.0
-    idx_2 = downsample_pointcloud(true_xyz, max_points=100000)
-    idx_2pred = downsample_pointcloud(pred_xyz, max_points=100000)
-    corepoints = true_xyz[idx_2]
-    corepoints_pred = pred_xyz[idx_2pred]
-    rough_gt, dzdx_true, dzdy_true = get_roughness(corepoints, true_xyz, scale)
-    rough_pred, dzdx_pred, dzdy_pred = get_roughness(corepoints_pred, pred_xyz, scale) #::10
-    plot_feature(rough_gt, rough_pred, data_txy[idx_2], model.data.nv_samples, scale, suffix="test", name=name, feat_name="Roughness", down=False)
-    plot_feature(dzdx_true, dzdx_pred, data_txy[idx_2], model.data.nv_samples, scale, suffix="test", name=name, feat_name="DzDx", down=False)
-    plot_feature(dzdy_true, dzdy_pred, data_txy[idx_2], model.data.nv_samples, scale, suffix="test", name=name, feat_name="DzDy", down=False)
-    scale = 3.0
-    rough_gt, dzdx_true, dzdy_true = get_roughness(corepoints, true_xyz, scale)
-    rough_pred, dzdx_pred, dzdy_pred = get_roughness(corepoints_pred, pred_xyz, scale) #::10
-    plot_feature(rough_gt, rough_pred, data_txy[idx_2], model.data.nv_samples, scale, suffix="test", name=name, feat_name="Roughness", down=False)
-    plot_feature(dzdx_true, dzdx_pred, data_txy[idx_2], model.data.nv_samples, scale, suffix="test", name=name, feat_name="DzDx", down=False)
-    plot_feature(dzdy_true, dzdy_pred, data_txy[idx_2], model.data.nv_samples, scale, suffix="test", name=name, feat_name="DzDy", down=False)
-    scale = 5.0
-    rough_gt, dzdx_true, dzdy_true = get_roughness(corepoints, true_xyz, scale)
-    rough_pred, dzdx_pred, dzdy_pred = get_roughness(corepoints_pred, pred_xyz, scale) #::10
-    plot_feature(rough_gt, rough_pred, data_txy[idx_2], model.data.nv_samples, scale, suffix="test", name=name, feat_name="Roughness", down=False)
-    plot_feature(dzdx_true, dzdx_pred, data_txy[idx_2], model.data.nv_samples, scale, suffix="test", name=name, feat_name="DzDx", down=False)
-    plot_feature(dzdy_true, dzdy_pred, data_txy[idx_2], model.data.nv_samples, scale, suffix="test", name=name, feat_name="DzDy", down=False)
-    return [mae_test, rmse_test]
-
-
-def evaluation_with_change(model, change_data, name, encoding):
-    data = change_data[:,:-2]
-    change = change_data[:,-2:]
-    if not encoding:
-        data_txy = data[:, [0,-3,-2]].copy()
-        test_targets = data[:, -1:]
-    else:
-        data_txy = data[:, 1:-1].copy()
-        test_targets = data[:, -1:]
-    model.test_set.normalize(data_txy, model.test_set.nv_samples, True)
-    z_pred = predict(torch.tensor(data_txy).cuda().float(), model)
-    z_nrm = model.data.nv_targets[0]
-    test_pred = z_pred * z_nrm[1] + z_nrm[0]
-    error_test = torch.absolute(torch.tensor(test_targets).cuda() - test_pred)
-    # error_test = torch.tensor(test_targets).cuda() - test_pred
-
-    dates = np.unique(data_txy[:,0])
-    for t in dates:
-        t_ = t * model.test_set.nv_samples[0][1] + model.test_set.nv_samples[0][0]
-        test_date = np.where(data_txy[:,0]== t)[0]
-        plot_error_change(error_test[test_date].cpu().numpy().flatten(), np.abs(change[test_date]), t_, name, "test")
-    plot_error_change(error_test.cpu().numpy().flatten(), np.abs(change), 0, name, "test", percentile=0)
-    #plot point-wise error with respect to change that occurred at that point
-
-
-def evaluation_timeseries(model, data, ts_gt, name, encoding, n_plots=10, suffix="test"):
-    elevations_true = ts_gt.distances
-    timestamps = np.array(([t + ts_gt.reference_epoch.timestamp for t in ts_gt.timedeltas]))
-    corepoints = ts_gt.corepoints.cloud
-    ref_dt = datetime.strptime("190101_000000", '%y%m%d_%H%M%S')
-
-    full_valid_id = np.where(np.any(np.isnan(elevations_true), axis=1) == False)[0]
-    nb_nans = np.count_nonzero(np.isnan(elevations_true), axis=1)
-    gap_filling_id = np.where((nb_nans >= 0.4 * elevations_true.shape[1])&(nb_nans <= 0.6 * elevations_true.shape[1]))[0]
-
-    half_res = np.array((timestamps[1:]-timestamps[:-1])) /2
-    newdates = []
-    for srd in range(timestamps.shape[0]-1):
-        newdates.append(timestamps[srd] + half_res[srd])
-
-    encod_newdates, days_el_newdates = encode_time_info(Time(newdates))
-    super_res_id_sel = np.random.choice(full_valid_id, n_plots, replace=False)
-    super_res_txyz = np.empty((0,14))
-    for sr_id in super_res_id_sel:
-        coords = ts_gt.corepoints.cloud[sr_id,[0,1,2]].reshape((1,-1))
-        new_xyz = np.repeat(coords, encod_newdates.shape[0],axis=0)
-        new_xyz[:,-1] = np.NaN
-        new_txyz = np.concatenate((days_el_newdates.reshape((-1,1)), encod_newdates, new_xyz), axis=1)
-        super_res_txyz = np.append(super_res_txyz, new_txyz, axis=0)
-    
-    if not encoding:
-        data_txy = np.concatenate((data[:, [0,-3,-2]].copy(), super_res_txyz[:,[0,-3,-2]].copy()),axis=0)
-        raw_txy = data_txy.copy()
-    else:
-        data_txy = np.concatenate((data[:, 1:-1].copy(), super_res_txyz[:,1:-1].copy()), axis=0)
-        raw_txy = data_txy.copy()
-    
-    model.test_set.normalize(data_txy, model.test_set.nv_samples, True)
-    z_pred = predict(torch.tensor(data_txy).cuda().float(), model)
-    z_nrm = model.data.nv_targets[0]
-    test_pred = z_pred * z_nrm[1] + z_nrm[0]
-    ts_pred = test_pred.cpu()
-
-    full_valid_id_sel = np.random.choice(full_valid_id, n_plots, replace=False)
-    for v_id in full_valid_id_sel:
-        coords = ts_gt.corepoints.cloud[v_id,[0,1]]
-        pt_id = np.where((data[:,-3]==coords[0])&(data[:,-2]==coords[1]))[0]
-        pred_ = ts_pred[pt_id]
-        target_dt=[]
-        for i in pt_id:
-            target_dt.append(ref_dt + timedelta(days=int(data[i,0])))
-        plot_timeseries(elevations_true, pred_, target_dt, timestamps, corepoints, coords, v_id, name, 'time_series_eval', "test")
-
-    # super_res_id_sel = np.random.choice(full_valid_id, n_plots, replace=False)
-    for sr_id in super_res_id_sel:
-        coords = ts_gt.corepoints.cloud[sr_id,[0,1]]
-        pt_id = np.where((raw_txy[:,-2]==coords[0])&(raw_txy[:,-1]==coords[1]))[0]
-        pred_ = ts_pred[pt_id]
-        target_dt=[]
-        for i in pt_id:
-            target_dt.append(ref_dt + timedelta(days=int(raw_txy[i,0])))
-        plot_timeseries(elevations_true, pred_, target_dt, timestamps, corepoints, coords, sr_id, name, 'temp_super_res', "test")
-    
-    gap_fill_id_sel = np.random.choice(gap_filling_id, n_plots, replace=False)
-    for gf_id in gap_fill_id_sel:
-        coords = ts_gt.corepoints.cloud[gf_id,[0,1]]
-        pt_id = np.where((data[:,-3]==coords[0])&(data[:,-2]==coords[1]))[0]
-        pred_ = ts_pred[pt_id]
-        target_dt=[]
-        for i in pt_id:
-            target_dt.append(ref_dt + timedelta(days=int(data[i,0])))
-        plot_timeseries(elevations_true, pred_, target_dt, timestamps, corepoints, coords, gf_id, name, 'temp_gap_filling', "test")
-    
-    #plot pred time series + true time series
-    #compute time series metrics
 
 
 def sample_hp(hp, trial):
@@ -563,8 +315,8 @@ def sample_hp(hp, trial):
                     10,
                     log=True,
                 )
-  
     return hp
+
 
 def free_gpu(pinns_object):
     pinns_object.model.cpu()
@@ -598,6 +350,7 @@ def objective_optuna(trial, model_hp, data_fn, name):
     free_gpu(NN)
     return scores
 
+
 def single_run(
     yaml_params,
     data,
@@ -619,6 +372,7 @@ def single_run(
     )
     return NN, model_hp
 
+
 def get_n_best_trials(study):
     """
     This function returns the sorted best trials from a study in Optuna.
@@ -634,11 +388,13 @@ def get_n_best_trials(study):
     out = [[el.number, el.values[0]] for el in sorted_trials]
     return out  # Return the top n trials
 
+
 def load_model(model_hp, weights, npz_path, data, index, encoding):
     npz = np.load(npz_path, allow_pickle=True)
-
+    # import pdb; pdb.set_trace()
     model_hp.input_size = int(npz["input_size"])
     model_hp.output_size = int(npz["output_size"])
+    model_hp.model["mapping_size"] = int(npz["model"].item()["mapping_size"])
     model_hp.nv_samples = [tuple(el) for el in tuple(npz["nv_samples"])]
     model_hp.nv_targets = [tuple(el) for el in tuple(npz["nv_targets"])]
     model_hp.model["hidden_nlayers"] = npz["model"].item()["hidden_nlayers"]
@@ -667,13 +423,10 @@ def plot_optuna(study, name):
         # os.mkdir("optuna")
     except:
         pass
-
     fig = optuna.visualization.plot_intermediate_values(study)
     fig.write_image(f"{name}/optuna/{name}" + "_inter_optuna.png")
-
     fig = optuna.visualization.plot_parallel_coordinate(study)
     fig.write_image(f"{name}/optuna/{name}" + "_searchplane.png")
-
     fig = optuna.visualization.plot_param_importances(study)
     fig.write_image(f"{name}/optuna/{name}" + "_important_params.png")
 
@@ -718,20 +471,19 @@ def main():
     print("Best trial is trial ", id_trial)
     npz = f"{opt.name}/multiple/optuna_{id_trial}.npz"
     weights = f"{opt.name}/multiple/optuna_{id_trial}.pth"
+    pd.DataFrame(scores_id, columns=["number", "value"]).to_csv(
+        f"{opt.name}__trial_scores.csv"
+    )
     model_hp.device = "cuda" if model_hp.gpu else "cpu"
     NN = load_model(model_hp, weights, npz, data, index, encoding)
     # time_preds = plot(data, NN, opt.name, 0, True)  # 0 is trial
     metrics = evaluation(NN, opt.name, encoding)
     metrics_test = evaluation_test(NN, data_test, opt.name, encoding)
-    change_data, ts_pts, ts_gt = load_eval_data_faster(keyword)
+    change_data, ts_pts, ts_gt, uncert_data, uncert_t = load_eval_data_faster(keyword)
     evaluation_with_change(NN, change_data, opt.name, encoding)
-    evaluation_timeseries(NN, ts_pts, ts_gt, opt.name, encoding)
+    evaluation_timeseries(NN, ts_pts, ts_gt, uncert_data, uncert_t, opt.name, encoding)
     # import pdb; pdb.set_trace()
     save_results(metrics + metrics_test, opt.name)
-    # plot_NN(NN, model_hp, opt.name)
-    pd.DataFrame(scores_id, columns=["number", "value"]).to_csv(
-        f"{opt.name}__trial_scores.csv"
-    )
     plot_optuna(study, opt.name)
 
 
@@ -754,20 +506,61 @@ def main_sr():
     
     NN, model_hp = single_run(opt.yaml_file, data, index, opt.name, encoding)
     plot_NN(NN, model_hp, opt.name)
+    metrics = evaluation(NN, opt.name, encoding)
+    metrics_test = evaluation_test(NN, data_test, opt.name, encoding, suffix="test_last")
+    change_data, ts_pts, ts_gt, uncert_data, uncert_t = load_eval_data_faster(keyword)
+    evaluation_with_change(NN, change_data, opt.name, encoding, suffix="test_last")
+    evaluation_timeseries(NN, ts_pts, ts_gt, uncert_data, uncert_t, opt.name, encoding, suffix="test_last")
+    # import pdb; pdb.set_trace()
+    save_results(metrics + metrics_test, opt.name, suffix="last")
+
     npz = f"{opt.name}/{opt.name}.npz"
     weights = f"{opt.name}/{opt.name}.pth"
     model_hp.device = "cuda" if model_hp.gpu else "cpu"
     NN = load_model(model_hp, weights, npz, data, index, encoding)
     metrics = evaluation(NN, opt.name, encoding)
-    metrics_test = evaluation_test(NN, data_test, opt.name, encoding)
-    change_data, ts_pts, ts_gt = load_eval_data_faster(keyword)
-    evaluation_with_change(NN, change_data, opt.name, encoding)
-    evaluation_timeseries(NN, ts_pts, ts_gt, opt.name, encoding)
-    # import pdb; pdb.set_trace()
-    save_results(metrics + metrics_test, opt.name)
+    metrics_test = evaluation_test(NN, data_test, opt.name, encoding, suffix="test_best")
+    evaluation_with_change(NN, change_data, opt.name, encoding, suffix="test_best")
+    evaluation_timeseries(NN, ts_pts, ts_gt, uncert_data, uncert_t, opt.name, encoding, suffix="test_best")
+    save_results(metrics + metrics_test, opt.name, suffix="best")
 
+
+def eval_main():
+    opt = parser_f()
+    keyword = opt.keyword
+    if "encoding" in keyword:
+        encoding = True
+    else:
+        encoding = False
+    data, index = load_data_faster(keyword)
+
+    data_train, data_test, idx = split_test(data, index)
+    model_hp = setup_hp(
+        opt.yaml_file,
+        data_train,
+        opt.name,
+    )
+
+    npz = f"{opt.name}/{opt.name}.npz"
+    weights = f"{opt.name}/{opt.name}.pth"
+    # OR
+    # npz = f"{opt.name}/multiple/optuna_{167}.npz"
+    # weights = f"{opt.name}/multiple/optuna_{167}.pth"
+    
+    model_hp.device = "cuda" if model_hp.gpu else "cpu"
+    NN = load_model(model_hp, weights, npz, data, index, encoding)
+    # metrics = evaluation(NN, opt.name, encoding)
+    # metrics_test = evaluation_test(NN, data_test, opt.name, encoding)
+    # change_data, ts_pts, ts_gt, uncert_data, uncert_t, zmean, zstd, tmean = load_eval_data_faster(keyword)
+    change_data, ts_pts, ts_gt, uncert_data, uncert_t = load_eval_data_faster(keyword)
+    # evaluation_with_change(NN, change_data, opt.name, encoding)
+    evaluation_timeseries(NN, ts_pts, ts_gt, uncert_data, uncert_t, opt.name, encoding)
+    # evaluation_timeseries(NN, ts_pts, ts_gt, uncert_data, uncert_t, zmean, zstd, tmean, opt.name, encoding)
+    # 
+    # save_results(metrics + metrics_test, opt.name)
 
 
 if __name__ == "__main__":
-    main()
-    # main_sr()
+    # main()
+    main_sr()
+    # eval_main()

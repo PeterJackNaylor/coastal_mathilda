@@ -2,6 +2,126 @@ import numpy as np
 import torch
 import pinns
 
+
+def load_data(filename):
+    with h5py.File(filename, "r") as f:
+        time_str = 'dates_str'
+        x_str = "x"
+        y_str = "y"
+        z_str = "z"
+        time = list(f[time_str])
+        time = [time_string_to_days(t) for t in time]
+        x = list(f[x_str])
+        y = list(f[y_str])
+        z = list(f[z_str])
+        data = np.column_stack((time, x, y, z))
+        import pdb; pdb.set_trace()
+    return data
+
+
+def load_data_faster(opt = "default", path="/home/mletard/compute/4dinr/data"):
+    if opt == 'default':
+        filename = "data/data_simu.npy"
+        return np.load(filename), None
+    elif opt == "seasonal_beach_temporal":
+        filename = path+"/seasonal_beach_temporal.npy"
+        filename_index = path+"/seasonal_beach_temporal_split.npy"
+    elif opt == "seasonal_beach_spatial":
+        filename = path+"/seasonal_beach_spatial.npy"
+        filename_index = path+"/seasonal_beach_spatial_split.npy"
+    elif opt == "seasonal_beach_temporal_encoding":
+        filename = path+"/seasonal_beach_temporal_encoding.npy"
+        filename_index = path+"/seasonal_beach_temporal_encoding_split.npy"
+    elif opt == "seasonal_beach_spatial_encoding":
+        filename = path+"/seasonal_beach_spatial_encoding.npy"
+        filename_index = path+"/seasonal_beach_spatial_encoding_split.npy"
+    elif opt == "monthly_beach_temporal":
+        filename = path+"/monthly_beach_temporal.npy"
+        filename_index = path+"/monthly_beach_temporal_split.npy"
+    elif opt == "monthly_beach_spatial":
+        filename = path+"/monthly_beach_spatial.npy"
+        filename_index = path+"/monthly_beach_spatial_split.npy"
+    elif opt == "monthly_beach_temporal_encoding":
+        filename = path+"/monthly_beach_temporal_encoding.npy"
+        filename_index = path+"/monthly_beach_temporal_encoding_split.npy"
+    elif opt == "monthly_beach_spatial_encoding":
+        filename = path+"/monthly_beach_spatial_encoding.npy"
+        filename_index = path+"/monthly_beach_spatial_encoding_split.npy"
+    elif opt == "weekly_beach_temporal":
+        filename = path+"/weekly_beach_temporal.npy"
+        filename_index = path+"/weekly_beach_temporal_split.npy"
+    elif opt == "weekly_beach_spatial":
+        filename = path+"/weekly_beach_spatial.npy"
+        filename_index = path+"/weekly_beach_spatial_split.npy"
+    elif opt == "weekly_beach_temporal_encoding":
+        filename = path+"/weekly_beach_temporal_encoding.npy"
+        filename_index = path+"/weekly_beach_temporal_encoding_split.npy"
+    elif opt == "weekly_beach_spatial_encoding":
+        filename = path+"/weekly_beach_spatial_encoding.npy"
+        filename_index = path+"/weekly_beach_spatial_encoding_split.npy"
+    elif opt == "daily_beach_temporal":
+        filename = path+"/daily_beach_temporal.npy"
+        filename_index = path+"/daily_beach_temporal_split.npy"
+    elif opt == "daily_beach_spatial":
+        filename = path+"/daily_beach_spatial.npy"
+        filename_index = path+"/daily_beach_spatial_split.npy"
+    elif opt == "daily_beach_temporal_encoding":
+        filename = path+"/daily_beach_temporal_encoding.npy"
+        filename_index = path+"/daily_beach_temporal_encoding_split.npy"
+    elif opt == "daily_beach_spatial_encoding":
+        filename = path+"/daily_beach_spatial_encoding.npy"
+        filename_index = path+"/daily_beach_spatial_encoding_split.npy"
+    elif opt == "final_map":
+        filename = path+"map.npy"
+        filename_index = path+"map_split.npy"
+    elif opt == "time_series":
+        filename = path+"timeseries.npy"
+        filename_index = path+"timeseries_split.npy"
+
+    return np.load(filename), np.load(filename_index)
+
+
+def load_eval_data_faster(opt, path="/home/mletard/compute/4dinr/data"):
+    if "seasonal_beach" in opt:
+        change_data = path+"/bitemporal_change_seasonal_beach.npy"
+        time_series = path+"/seasonal_beach_timeseries.npy"
+        time_series_gt = py4dgeo.SpatiotemporalAnalysis(path+"/seasonal_beach.zip")
+        uncertainty_data = path+"/seasonal_beach_allZ.npy"
+        uncertainty_times = path+"/seasonal_beach_allT.npy"
+        zmean = path+"/seasonal_beach_meanZ.npy"
+        zstd = path+"/seasonal_beach_stdZ.npy"
+        tmean = path+"/seasonal_beach_meanT.npy"
+    elif "monthly_beach" in opt:
+        change_data = path+"/bitemporal_change_monthly_beach.npy"
+        time_series = path+"/monthly_beach_timeseries.npy"
+        time_series_gt = py4dgeo.SpatiotemporalAnalysis(path+"/monthly_beach.zip")
+        uncertainty_data = path+"/monthly_beach_allZ.npy"
+        uncertainty_times = path+"/monthly_beach_allT.npy"
+        zmean = path+"/monthly_beach_meanZ.npy"
+        zstd = path+"/monthly_beach_stdZ.npy"
+        tmean = path+"/monthly_beach_meanT.npy"
+    elif "weekly_beach" in opt:
+        change_data = path+"/bitemporal_change_weekly_beach.npy"
+        time_series = path+"/weekly_beach_timeseries.npy"
+        time_series_gt = py4dgeo.SpatiotemporalAnalysis(path+"/weekly_beach.zip")
+        uncertainty_data = path+"/weekly_beach_allZ.npy"
+        uncertainty_times = path+"/weekly_beach_allT.npy"
+        zmean = path+"/weekly_beach_meanZ.npy"
+        zstd = path+"/weekly_beach_stdZ.npy"
+        tmean = path+"/weekly_beach_meanT.npy"
+    elif "daily_beach" in opt:
+        change_data = path+"/bitemporal_change_daily_beach.npy"
+        time_series = path+"/daily_beach_timeseries.npy"
+        time_series_gt = py4dgeo.SpatiotemporalAnalysis(path+"/daily_beach.zip")
+        uncertainty_data = path+"/daily_beach_allZ.npy"
+        uncertainty_times = path+"/daily_beach_allT.npy"
+        zmean = path+"/daily_beach_meanZ.npy"
+        zstd = path+"/daily_beach_stdZ.npy"
+        tmean = path+"/daily_beach_meanT.npy"
+
+    return np.load(change_data), np.load(time_series), time_series_gt, np.load(uncertainty_data), np.load(uncertainty_times, allow_pickle=True)#, np.load(zmean), np.load(zstd), np.load(tmean)
+
+
 def split_train(data, index):
     if index is None:
         n_data = data.shape[0]
