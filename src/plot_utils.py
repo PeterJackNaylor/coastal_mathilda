@@ -1,7 +1,36 @@
 import numpy as np
+import os
 import matplotlib.pyplot as plt
-from single_run import *
 import pandas as pd
+from datetime import datetime, timedelta
+
+
+def downsample_pointcloud(data, max_points=1000000):
+    n_points = data.shape[0]
+    if n_points <= max_points:
+        return np.arange(n_points)
+    indices = np.random.choice(n_points, max_points, replace=False)
+    return indices
+
+
+def days_to_time_string(days, reference_date="190101_000000"):
+    # Parse the reference date
+    ref_dt = datetime.strptime(reference_date, '%y%m%d_%H%M%S')
+    # Calculate the target datetime by adding the days
+    target_dt = ref_dt + timedelta(days=int(days))
+    # Format the result as a string
+    return target_dt.strftime('%y%m%d_%H%M%S')
+
+
+def time_string_to_days(time_str, reference_date="190101_000000"):
+    # Parse the input time string
+    dt = datetime.strptime(time_str, '%y%m%d_%H%M%S')
+    # Parse the reference date
+    ref_dt = datetime.strptime(reference_date, '%y%m%d_%H%M%S')
+    # Calculate the time difference in days
+    time_difference = dt - ref_dt
+    days = time_difference.total_seconds() / (24 * 3600)  # Convert seconds to days
+    return days
 
 
 def test_histo(ztrue, zpred, name, suffix=''):

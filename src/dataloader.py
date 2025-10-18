@@ -1,6 +1,7 @@
 import numpy as np
 import torch
 import pinns
+import py4dgeo
 
 
 def load_data(filename):

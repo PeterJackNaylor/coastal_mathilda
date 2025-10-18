@@ -1,5 +1,5 @@
 import os
-import sys 
+# import sys 
 # sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'INR4Torch')))
 import argparse
 import pinns
@@ -11,50 +11,18 @@ import numpy as np
 from functools import partial
 import matplotlib.pylab as plt
 import matplotlib.cm as cm
-# from dataloader import return_dataset
-# from model_pde import IceSheet
-# from utils import grid_on_polygon, predict, inverse_time, load_geojson
 from pinns.models import INR
 from datetime import datetime
 from dataloader import return_dataset, load_data, load_data_faster, load_eval_data_faster
 from pde_model import Surface
-from datetime import datetime, timedelta
 from tqdm import tqdm 
 from shutil import copy 
 import optuna
 import gc
-import py4dgeo
 from pc_utils import *
 from plot_utils import *
 from temp_encoding import *
 from evaluations import *
-
-
-def predict(array, model, attribute="model"):
-    n_data = array.shape[0]
-    verbose = model.hp.verbose
-    bs = model.hp.losses["mse"]["bs"]
-    batch_idx = torch.arange(0, n_data, dtype=int, device=model.device)
-    range_ = range(0, n_data, bs)
-    train_iterator = tqdm(range_) if verbose else range_
-    preds = []
-    model_function = getattr(model, attribute)
-    with torch.no_grad():
-        with torch.autocast(
-            device_type=model.device, dtype=model.dtype, enabled=model.use_amp
-        ):
-            for i in train_iterator:
-                idx = batch_idx[i : (i + bs)]
-                samples = array[idx]
-                pred = model_function(samples)
-                preds.append(pred)
-            if i + bs < n_data:
-                idx = batch_idx[(i + bs) :]
-                samples = array[idx]
-                pred = model_function(samples)
-                preds.append(pred)
-    preds = torch.cat(preds)
-    return preds
 
 
 def setup_uniform_grid(pc, step):
@@ -131,61 +99,6 @@ def setup_hp(
     return model_hp
 
 
-def mae(target, prediction):
-    return torch.absolute(target - prediction).mean().item()
-
-
-def rmse(target, prediction):
-    criterion = nn.MSELoss()
-    target = target.to(dtype=float)
-    prediction = prediction.to(dtype=float)
-    loss = torch.sqrt(criterion(target, prediction)).item()
-    return loss
-
-
-def downsample_pointcloud(data, max_points=1000000):
-    n_points = data.shape[0]
-    if n_points <= max_points:
-        return np.arange(n_points)
-    indices = np.random.choice(n_points, max_points, replace=False)
-    return indices
-
-
-def evaluation(model, name, encoding):
-    z_nrm = model.data.nv_targets[0]
-    test_targets = model.test_set.targets * z_nrm[1] + z_nrm[0]
-    test_predictions = predict(model.test_set.samples, model)
-    test_predictions = test_predictions * z_nrm[1] + z_nrm[0]
-    train_targets = model.data.targets * z_nrm[1] + z_nrm[0]
-    train_predictions = predict(model.data.samples, model)
-    train_predictions = train_predictions * z_nrm[1] + z_nrm[0]
-    all_targets = torch.cat([train_targets, test_targets])
-    all_predictions = torch.cat([train_predictions, test_predictions])
-    # MAE computation
-    mae_train = mae(train_targets, train_predictions)
-    mae_test = mae(test_targets, test_predictions)
-    mae_all = mae(all_targets, all_predictions)
-
-    plot_pc(test_targets.flatten().cpu().float().numpy(), 
-            test_predictions.flatten().cpu().float().numpy(), 
-            model.test_set.samples.cpu().numpy(), model.data.nv_samples, suffix="validation", name=name)
-    test_histo(test_targets.flatten().cpu().float().numpy(), 
-                test_predictions.flatten().cpu().float().numpy(), 
-                name=name, suffix="validation")
-    plot_pc(train_targets.flatten().cpu().float().numpy(), 
-            train_predictions.flatten().cpu().float().numpy(), 
-            model.data.samples.cpu().numpy(), model.data.nv_samples, suffix="train", name=name)
-    test_histo(train_targets.flatten().cpu().float().numpy(), 
-            train_predictions.flatten().cpu().float().numpy(),
-                name=name, suffix="train")
-    # RMSE
-    rmse_train = rmse(train_targets, train_predictions)
-    rmse_test = rmse(test_targets, test_predictions)
-    rmse_all = rmse(all_targets, all_predictions)
-
-    return [mae_train, mae_test, mae_all, rmse_train, rmse_test, rmse_all]
-
-
 def save_results(variables, name, suffix=""):
     results = pd.DataFrame()
     # variables = [t_var, mae_train, mae_test, mae_all, rmse_train, rmse_test, rmse_all]
@@ -260,26 +173,6 @@ def plot_NN(NN, model_hp, name):
             plt.close()
         except:
             print(f"{name}/Couldn't plot t_weights for {key}")
-
-
-def days_to_time_string(days, reference_date="190101_000000"):
-    # Parse the reference date
-    ref_dt = datetime.strptime(reference_date, '%y%m%d_%H%M%S')
-    # Calculate the target datetime by adding the days
-    target_dt = ref_dt + timedelta(days=int(days))
-    # Format the result as a string
-    return target_dt.strftime('%y%m%d_%H%M%S')
-
-
-def time_string_to_days(time_str, reference_date="190101_000000"):
-    # Parse the input time string
-    dt = datetime.strptime(time_str, '%y%m%d_%H%M%S')
-    # Parse the reference date
-    ref_dt = datetime.strptime(reference_date, '%y%m%d_%H%M%S')
-    # Calculate the time difference in days
-    time_difference = dt - ref_dt
-    days = time_difference.total_seconds() / (24 * 3600)  # Convert seconds to days
-    return days
 
 
 def split_test(data, index):
