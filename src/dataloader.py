@@ -142,11 +142,11 @@ def generate_single_dataloader(
     hp, data, gpu, encoding=False, nv_samples=None, nv_targets=None, train=True
 ):
     if encoding:
-        samples = data[:, :12]
-        targets = data[:, 12:13]
+        samples = data[:, 1:-1]
+        targets = data[:, -1:]
     else:
-        samples = data[:, :3]
-        targets = data[:, 3:4]
+        samples = data[:, [0,-3,-2]]
+        targets = data[:, -1:]
 
     data = TLaLoZC(
         samples,
