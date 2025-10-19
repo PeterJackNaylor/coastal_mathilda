@@ -27,6 +27,18 @@ def load_data_faster(opt = "default", path="/home/mletard/compute/4dinr/data"):
     elif opt == "seasonal_beach_temporal":
         filename = path+"/seasonal_beach_temporal.npy"
         filename_index = path+"/seasonal_beach_temporal_split.npy"
+    elif opt == "seasonal_beach_temporal2":
+        filename = path+"/seasonal_beach_temporal2.npy"
+        filename_index = path+"/seasonal_beach_temporal2_split.npy"
+    elif opt == "seasonal_beach_temporal3":
+        filename = path+"/seasonal_beach_temporal3.npy"
+        filename_index = path+"/seasonal_beach_temporal3_split.npy"
+    elif opt == "seasonal_augmented":
+        filename = path+"/seasonal_augmented.npy"
+        filename_index = path+"/seasonal_augmented_split.npy"
+    elif opt == "seasonal_beach_spatial2":
+        filename = path+"/seasonal_beach_spatial2.npy"
+        filename_index = path+"/seasonal_beach_spatial2_split.npy"
     elif opt == "seasonal_beach_spatial":
         filename = path+"/seasonal_beach_spatial.npy"
         filename_index = path+"/seasonal_beach_spatial_split.npy"
@@ -83,7 +95,7 @@ def load_data_faster(opt = "default", path="/home/mletard/compute/4dinr/data"):
 
 
 def load_eval_data_faster(opt, path="/home/mletard/compute/4dinr/data"):
-    if "seasonal_beach" in opt:
+    if "seasonal" in opt:
         change_data = path+"/bitemporal_change_seasonal_beach.npy"
         time_series = path+"/seasonal_beach_timeseries.npy"
         time_series_gt = py4dgeo.SpatiotemporalAnalysis(path+"/seasonal_beach.zip")
