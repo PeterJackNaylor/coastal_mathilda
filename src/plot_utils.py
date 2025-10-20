@@ -300,17 +300,15 @@ def plot_timeseries_uncert(elevations_true, ts_pred, zmean, zstd, tdays_pred, ti
     fig, axes = plt.subplots(figsize=(10, 5))
     zmean = zmean[...,2:]
     zstd = zstd[..., 2:]
-    print(tmean.shape, zmean[cp_idx_sel].shape, zstd[cp_idx_sel].shape, (zmean[cp_idx_sel]-zstd[cp_idx_sel]).shape)
+    order = np.argsort(tmean)
     plt.fill_between(
-        pd.to_datetime(tmean),
-        zmean[cp_idx_sel] - zstd[cp_idx_sel],
-        zmean[cp_idx_sel] + zstd[cp_idx_sel],
-        color='skyblue',
+        pd.to_datetime(tmean[order]),
+        zmean[cp_idx_sel, order] - zstd[cp_idx_sel, order],
+        zmean[cp_idx_sel, order] + zstd[cp_idx_sel, order],
+        color="lightgray", #'skyblue',
         alpha=0.3,
         label='±1σ'
     )
-
-    print(zmean[cp_idx_sel] + zstd[cp_idx_sel])
 
     timeseries_sel = elevations_true[cp_idx_sel]
 

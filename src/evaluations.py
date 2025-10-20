@@ -159,8 +159,8 @@ def evaluation_with_change(model, change_data, name, encoding, suffix="test"):
     #plot point-wise error with respect to change that occurred at that point
 
 
-# def evaluation_timeseries(model, data, ts_gt, uncert_data, uncert_time, zmean, zstd, tmean, name, encoding, n_plots=10, suffix="test"):
-def evaluation_timeseries(model, data, ts_gt, uncert_data, uncert_time, name, encoding, n_plots=10, suffix="test"):
+def evaluation_timeseries(model, data, ts_gt, uncert_data, uncert_time, zmean, zstd, tmean, name, encoding, n_plots=10, suffix="test_best"):
+# def evaluation_timeseries(model, data, ts_gt, uncert_data, uncert_time, name, encoding, n_plots=10, suffix="test"):
     elevations_true = ts_gt.distances
     elevations_uncertainty = uncert_data
     timestamps = np.array(([t + ts_gt.reference_epoch.timestamp for t in ts_gt.timedeltas]))
@@ -209,7 +209,7 @@ def evaluation_timeseries(model, data, ts_gt, uncert_data, uncert_time, name, en
             target_dt.append(ref_dt + timedelta(days=int(data[i,0])))
         plot_timeseries(elevations_true, pred_, target_dt, timestamps, corepoints, coords, v_id, name, 'time_series_eval', suffix)
         # plot_timeseries(elevations_uncertainty[:,2:], pred_, target_dt, uncert_time, corepoints, coords, v_id, name, 'time_series_uncert', "test")
-        # plot_timeseries_uncert(elevations_true, pred_, zmean, zstd, target_dt, timestamps, tmean, v_id, name, 'time_series_uncert2', "test")
+        plot_timeseries_uncert(elevations_true, pred_, zmean, zstd, target_dt, timestamps, tmean, v_id, name, 'time_series_uncert2', "test_best")
 
     # super_res_id_sel = np.random.choice(full_valid_id, n_plots, replace=False)
     for sr_id in super_res_id_sel:

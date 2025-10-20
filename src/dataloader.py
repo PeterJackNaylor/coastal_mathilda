@@ -104,7 +104,7 @@ def load_eval_data_faster(opt, path="/home/mletard/compute/4dinr/data"):
         zmean = path+"/seasonal_beach_meanZ.npy"
         zstd = path+"/seasonal_beach_stdZ.npy"
         tmean = path+"/seasonal_beach_meanT.npy"
-    elif "monthly_beach" in opt:
+    elif "monthly" in opt:
         change_data = path+"/bitemporal_change_monthly_beach.npy"
         time_series = path+"/monthly_beach_timeseries.npy"
         time_series_gt = py4dgeo.SpatiotemporalAnalysis(path+"/monthly_beach.zip")
@@ -113,7 +113,7 @@ def load_eval_data_faster(opt, path="/home/mletard/compute/4dinr/data"):
         zmean = path+"/monthly_beach_meanZ.npy"
         zstd = path+"/monthly_beach_stdZ.npy"
         tmean = path+"/monthly_beach_meanT.npy"
-    elif "weekly_beach" in opt:
+    elif "weekly" in opt:
         change_data = path+"/bitemporal_change_weekly_beach.npy"
         time_series = path+"/weekly_beach_timeseries.npy"
         time_series_gt = py4dgeo.SpatiotemporalAnalysis(path+"/weekly_beach.zip")
@@ -122,7 +122,7 @@ def load_eval_data_faster(opt, path="/home/mletard/compute/4dinr/data"):
         zmean = path+"/weekly_beach_meanZ.npy"
         zstd = path+"/weekly_beach_stdZ.npy"
         tmean = path+"/weekly_beach_meanT.npy"
-    elif "daily_beach" in opt:
+    elif "daily" in opt:
         change_data = path+"/bitemporal_change_daily_beach.npy"
         time_series = path+"/daily_beach_timeseries.npy"
         time_series_gt = py4dgeo.SpatiotemporalAnalysis(path+"/daily_beach.zip")
@@ -132,7 +132,7 @@ def load_eval_data_faster(opt, path="/home/mletard/compute/4dinr/data"):
         zstd = path+"/daily_beach_stdZ.npy"
         tmean = path+"/daily_beach_meanT.npy"
 
-    return np.load(change_data), np.load(time_series), time_series_gt, np.load(uncertainty_data), np.load(uncertainty_times, allow_pickle=True)#, np.load(zmean), np.load(zstd), np.load(tmean)
+    return np.load(change_data), np.load(time_series), time_series_gt, np.load(uncertainty_data), np.load(uncertainty_times, allow_pickle=True), np.load(zmean), np.load(zstd), np.load(tmean)
 
 
 def split_train(data, index):
