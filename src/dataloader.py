@@ -144,9 +144,10 @@ def split_train(data, index):
         idx_train = idx[:n_train]
         idx_test = idx[n_train:]
         return idx_train, idx_test
-    idx = (index == 1).squeeze()
-    idx_train = np.where(~idx)[0]
-    idx_test = np.where(idx)[0]
+    idx = (index == 0).squeeze()
+    idx_train = np.where(idx)[0]
+    idx_ = (index == 1).squeeze()
+    idx_test = np.where(idx_)[0]
     return idx_train, idx_test
 
 

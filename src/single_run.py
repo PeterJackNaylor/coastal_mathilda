@@ -403,7 +403,7 @@ def main_sr():
     metrics_test = evaluation_test(NN, data_test, opt.name, encoding, suffix="test_last")
     change_data, ts_pts, ts_gt, uncert_data, uncert_t, zmean, zstd, tmean = load_eval_data_faster(keyword)
     evaluation_with_change(NN, change_data, opt.name, encoding, suffix="test_last")
-    evaluation_timeseries(NN, ts_pts, ts_gt, uncert_data, uncert_t, zmean, zstd, tmean, opt.name, encoding)
+    evaluation_timeseries(NN, ts_pts, ts_gt, uncert_data, uncert_t, zmean, zstd, tmean, opt.name, encoding, suffix="test_last")
     # import pdb; pdb.set_trace()
     save_results(metrics + metrics_test, opt.name, suffix="last")
 
@@ -414,7 +414,7 @@ def main_sr():
     metrics = evaluation(NN, opt.name, encoding)
     metrics_test = evaluation_test(NN, data_test, opt.name, encoding, suffix="test_best")
     evaluation_with_change(NN, change_data, opt.name, encoding, suffix="test_best")
-    evaluation_timeseries(NN, ts_pts, ts_gt, uncert_data, uncert_t, zmean, zstd, tmean, opt.name, encoding)
+    evaluation_timeseries(NN, ts_pts, ts_gt, uncert_data, uncert_t, zmean, zstd, tmean, opt.name, encoding, suffix="test_best")
     save_results(metrics + metrics_test, opt.name, suffix="best")
 
 
@@ -455,5 +455,5 @@ def eval_main():
 
 if __name__ == "__main__":
     # main()
-    # main_sr()
-    eval_main()
+    main_sr()
+    # eval_main()
