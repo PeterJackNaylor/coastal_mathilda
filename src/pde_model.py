@@ -52,11 +52,17 @@ class Surface(pinns.DensityEstimator):
         if not hasattr(self, "it_comp"):
             self.it_comp = 0
         if self.it != self.it_comp:
-            bs = self.hp.losses["gradient_lat"]["bs"]
+            try:
+                bs = self.hp.losses["gradient_lat"]["bs"]
+            except:
+                bs = self.hp.losses["temporal_grad"]["bs"]
             Lat = pinns.gen_uniform(bs, self.device)
             Lon = pinns.gen_uniform(bs, self.device)
             M = self.M if hasattr(self, "M") else None
-            temporal_scheme = self.hp.losses["gradient_lat"]["temporal_causality"]
+            try:
+                temporal_scheme = self.hp.losses["gradient_lat"]["temporal_causality"]
+            except:
+                temporal_scheme = self.hp.losses["temporal_grad"]["temporal_causality"]
 
             t = pinns.gen_uniform(
                 bs,
