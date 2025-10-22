@@ -1,8 +1,8 @@
 #training
 # max_iters: 2000 #00 #180 #00
-epochs: 400
+epochs: 100
 normalise_targets: True
-test_epochs: 40
+test_epochs: 1
 # test_frequency: 500 # 1000
 save_model: True
 ignore_nan: True
@@ -10,13 +10,14 @@ train_fraction: 0.2
 seed: 42
 #Models
 model:
-  name: RFF #or RFF/SIREN/WIRES/MFN
-  hidden_nlayers: 5
-  hidden_width: 256
-  scale: 0.1 #for SIREN: 30
+  name: RFF_st #or RFF/RFF_st/SIREN/WIRES/MFN
+  hidden_nlayers: 5 #5
+  hidden_width: 256 #256
+  scale: 0.1 #5 #for SIREN: 30
+  scale_time: 1.5 #1.5 #3 #1.5 #or None
   skip: False
   ## RFF specific
-  mapping_size: 256
+  mapping_size: 256 #256
   activation: tanh
   modified_mlp: False #True # if you have a seperate encoder for the spatial and temporal inputs.
   linear: HE # RWF # HE # Glorot # RWF Glorot does not work with SIREN
@@ -52,22 +53,30 @@ losses:
   #   temporal_causality: True
   #   bs: 8192 # 8192 # 16384 # 32768 # powers of 2 only
   #   method: periodicity
-  spatial_grad:
-    report: True
-    log: True
-    lambda: 1
-    temporal_causality: False
-    bs: 8192 # 8192 #16384 # 65536 #32768 # 8192 # √ # powers of 2 only
-    method: spatial_gradient
-    loss_balancing: False #wether to be included in loss balancing
-  # temporal_grad:
+  # gradient_lat:
   #   report: True
   #   log: True
   #   lambda: 1
   #   temporal_causality: False
   #   bs: 8192 # 8192 #16384 # 65536 #32768 # 8192 # √ # powers of 2 only
-  #   method: temporal_gradient
+  #   method: gradient_lat
   #   loss_balancing: False #wether to be included in loss balancing
+  # gradient_lon:
+  #   report: True
+  #   log: True
+  #   lambda: 1
+  #   temporal_causality: False
+  #   bs: 8192 # 8192 #16384 # 65536 #32768 # 8192 # √ # powers of 2 only
+  #   method: gradient_lon
+  #   loss_balancing: False #wether to be included in loss balancing
+  temporal_grad:
+    report: True
+    log: True
+    lambda: 1
+    temporal_causality: False
+    bs: 8192 # 8192 #16384 # 65536 #32768 # 8192 # √ # powers of 2 only
+    method: gradient_time
+    loss_balancing: False #wether to be included in loss balancing
 
 
 
@@ -95,7 +104,7 @@ self_adapting_loss_balancing:
 
 
 early_stopping:
-  status: False
+  status: True
   ignore_first: 5
   patience: 20
   value: 0.0001
@@ -120,4 +129,4 @@ cosine_anealing:
 
 optuna:
   patience: 10000
-  trials: 50
+  trials: 200
