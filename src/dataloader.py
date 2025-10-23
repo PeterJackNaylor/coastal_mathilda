@@ -24,9 +24,37 @@ def load_data_faster(opt = "default", path="/home/mletard/compute/4dinr/data"):
     if opt == 'default':
         filename = "data/data_simu.npy"
         return np.load(filename), None
-    elif opt == "seasonal_beach_temporal":
+    elif opt == "seasonal_beach_temporal" or opt == "seasonal_beach_temporal_encoding":
         filename = path+"/seasonal_beach_temporal.npy"
         filename_index = path+"/seasonal_beach_temporal_split.npy"
+    elif opt == "seasonal_beach_spatial" or opt == "seasonal_beach_spatial_encoding":
+        filename = path+"/seasonal_beach_spatial.npy"
+        filename_index = path+"/seasonal_beach_spatial_split.npy"
+    elif opt == "monthly_beach_temporal" or opt == "monthly_beach_temporal_encoding":
+        filename = path+"/monthly_beach_temporal.npy"
+        filename_index = path+"/monthly_beach_temporal_split.npy"
+    elif opt == "monthly_beach_spatial" or opt == "monthly_beach_spatial_encoding":
+        filename = path+"/monthly_beach_spatial.npy"
+        filename_index = path+"/monthly_beach_spatial_split.npy"
+    elif opt == "weekly_beach_temporal" or opt == "weekly_beach_temporal_encoding":
+        filename = path+"/weekly_beach_temporal.npy"
+        filename_index = path+"/weekly_beach_temporal_split.npy"
+    elif opt == "weekly_beach_spatial" or opt == "weekly_beach_spatial_encoding":
+        filename = path+"/weekly_beach_spatial.npy"
+        filename_index = path+"/weekly_beach_spatial_split.npy"
+    elif opt == "daily_beach_temporal" or opt == "daily_beach_temporal_encoding":
+        filename = path+"/daily_beach_temporal.npy"
+        filename_index = path+"/daily_beach_temporal_split.npy"
+    elif opt == "daily_beach_spatial" or opt == "daily_beach_spatial_encoding":
+        filename = path+"/daily_beach_spatial.npy"
+        filename_index = path+"/daily_beach_spatial_split.npy"
+    elif opt == "final_map":
+        filename = path+"map.npy"
+        filename_index = path+"map_split.npy"
+    elif opt == "time_series":
+        filename = path+"timeseries.npy"
+        filename_index = path+"timeseries_split.npy"
+
     elif opt == "seasonal_beach_temporal2":
         filename = path+"/seasonal_beach_temporal2.npy"
         filename_index = path+"/seasonal_beach_temporal2_split.npy"
@@ -39,57 +67,6 @@ def load_data_faster(opt = "default", path="/home/mletard/compute/4dinr/data"):
     elif opt == "seasonal_beach_spatial2":
         filename = path+"/seasonal_beach_spatial2.npy"
         filename_index = path+"/seasonal_beach_spatial2_split.npy"
-    elif opt == "seasonal_beach_spatial":
-        filename = path+"/seasonal_beach_spatial.npy"
-        filename_index = path+"/seasonal_beach_spatial_split.npy"
-    elif opt == "seasonal_beach_temporal_encoding":
-        filename = path+"/seasonal_beach_temporal_encoding.npy"
-        filename_index = path+"/seasonal_beach_temporal_encoding_split.npy"
-    elif opt == "seasonal_beach_spatial_encoding":
-        filename = path+"/seasonal_beach_spatial_encoding.npy"
-        filename_index = path+"/seasonal_beach_spatial_encoding_split.npy"
-    elif opt == "monthly_beach_temporal":
-        filename = path+"/monthly_beach_temporal.npy"
-        filename_index = path+"/monthly_beach_temporal_split.npy"
-    elif opt == "monthly_beach_spatial":
-        filename = path+"/monthly_beach_spatial.npy"
-        filename_index = path+"/monthly_beach_spatial_split.npy"
-    elif opt == "monthly_beach_temporal_encoding":
-        filename = path+"/monthly_beach_temporal_encoding.npy"
-        filename_index = path+"/monthly_beach_temporal_encoding_split.npy"
-    elif opt == "monthly_beach_spatial_encoding":
-        filename = path+"/monthly_beach_spatial_encoding.npy"
-        filename_index = path+"/monthly_beach_spatial_encoding_split.npy"
-    elif opt == "weekly_beach_temporal":
-        filename = path+"/weekly_beach_temporal.npy"
-        filename_index = path+"/weekly_beach_temporal_split.npy"
-    elif opt == "weekly_beach_spatial":
-        filename = path+"/weekly_beach_spatial.npy"
-        filename_index = path+"/weekly_beach_spatial_split.npy"
-    elif opt == "weekly_beach_temporal_encoding":
-        filename = path+"/weekly_beach_temporal_encoding.npy"
-        filename_index = path+"/weekly_beach_temporal_encoding_split.npy"
-    elif opt == "weekly_beach_spatial_encoding":
-        filename = path+"/weekly_beach_spatial_encoding.npy"
-        filename_index = path+"/weekly_beach_spatial_encoding_split.npy"
-    elif opt == "daily_beach_temporal":
-        filename = path+"/daily_beach_temporal.npy"
-        filename_index = path+"/daily_beach_temporal_split.npy"
-    elif opt == "daily_beach_spatial":
-        filename = path+"/daily_beach_spatial.npy"
-        filename_index = path+"/daily_beach_spatial_split.npy"
-    elif opt == "daily_beach_temporal_encoding":
-        filename = path+"/daily_beach_temporal_encoding.npy"
-        filename_index = path+"/daily_beach_temporal_encoding_split.npy"
-    elif opt == "daily_beach_spatial_encoding":
-        filename = path+"/daily_beach_spatial_encoding.npy"
-        filename_index = path+"/daily_beach_spatial_encoding_split.npy"
-    elif opt == "final_map":
-        filename = path+"map.npy"
-        filename_index = path+"map_split.npy"
-    elif opt == "time_series":
-        filename = path+"timeseries.npy"
-        filename_index = path+"timeseries_split.npy"
 
     return np.load(filename), np.load(filename_index)
 

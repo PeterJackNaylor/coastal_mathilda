@@ -407,15 +407,15 @@ def main_sr():
     # import pdb; pdb.set_trace()
     save_results(metrics + metrics_test, opt.name, suffix="last")
 
-    npz = f"{opt.name}/{opt.name}.npz"
-    weights = f"{opt.name}/{opt.name}.pth"
-    model_hp.device = "cuda" if model_hp.gpu else "cpu"
-    NN = load_model(model_hp, weights, npz, data, index, encoding)
-    metrics = evaluation(NN, opt.name, encoding)
-    metrics_test = evaluation_test(NN, data_test, opt.name, encoding, suffix="test_best")
-    # evaluation_with_change(NN, change_data, opt.name, encoding, suffix="test_best")
-    evaluation_timeseries(NN, ts_pts, ts_gt, uncert_data, uncert_t, zmean, zstd, tmean, opt.name, encoding, suffix="test_best")
-    save_results(metrics + metrics_test, opt.name, suffix="best")
+    # npz = f"{opt.name}/{opt.name}.npz"
+    # weights = f"{opt.name}/{opt.name}.pth"
+    # model_hp.device = "cuda" if model_hp.gpu else "cpu"
+    # NN = load_model(model_hp, weights, npz, data, index, encoding)
+    # metrics = evaluation(NN, opt.name, encoding)
+    # metrics_test = evaluation_test(NN, data_test, opt.name, encoding, feats=False, suffix="test_best")
+    # # evaluation_with_change(NN, change_data, opt.name, encoding, suffix="test_best")
+    # evaluation_timeseries(NN, ts_pts, ts_gt, uncert_data, uncert_t, zmean, zstd, tmean, opt.name, encoding, suffix="test_best")
+    # save_results(metrics + metrics_test, opt.name, suffix="best")
 
 
 def eval_main():
